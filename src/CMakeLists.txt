@@ -2,6 +2,7 @@ set(UTIL_FILES
     ${SRC_FOLDER}/util/filesystem.cpp
     ${SRC_FOLDER}/util/dictionary.cpp
     ${SRC_FOLDER}/util/xml_sax_parser.cpp
+    ${SRC_FOLDER}/util/format.cpp
 )
 
 add_library(vsim_util ${UTIL_FILES})

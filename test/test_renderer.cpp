@@ -1,10 +1,11 @@
 #include <vsim/renderer/renderer.hpp>
 #include <GLFW/glfw3.h>
 
-
+#include <vsim/util/format.hpp>
 #include <iostream>
 
 using namespace vsim::renderer ;
+using namespace vsim::util ;
 using namespace std ;
 
 class glfwRenderingContext: public RenderingContext {
@@ -59,6 +60,10 @@ public:
 };
 
 int main(int argc, char *argv[]) {
+
+    int test = 43 ;
+
+    Format fmt("There are %5.3f items in %s only") ;
 
     glfwRenderingContext ctx(100, 100) ;
 
