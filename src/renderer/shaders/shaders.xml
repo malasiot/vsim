@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<library id="vsim_opengl_shaders_library">
+	<shader src="rigid.vs" type="vertex" id="rigid"/>
+	<shader src="skinning.vs" type="vertex" id="bones"/>
+	<shader src="flat.fs" type="fragment" id="flat"/>
+	<shader src="phong.fs" type="fragment" id="smooth"/>
+	<shader src="textured.fs" type="fragment" id="textured"/>
+
+	<program id="rigid_flat">
+		<shader ref="rigid"/>
+		<shader ref="flat"/>
+	</program>	
+	
+	<program id="rigid_smooth">
+		<shader ref="rigid"/>
+		<shader ref="smooth"/>
+	</program>	
+
+	<program id="rigid_textured">
+		<shader ref="rigid"/>
+		<shader ref="textured"/>
+	</program>
+	
+	<program id="bones_flat">
+		<shader ref="bones"/>
+		<shader ref="flat"/>
+	</program>	
+	
+	<program id="bones_smooth">
+		<shader ref="bones"/>
+		<shader ref="smooth"/>
+	</program>	
+
+	<program id="bones_textured">
+		<shader ref="bones"/>
+		<shader ref="textured"/>
+	</program>		
+
+
+</library>

@@ -1,49 +1,48 @@
 #include <vsim/renderer/renderer.hpp>
+#include <vsim/renderer/ogl_shaders.hpp>
 
 #define GL_GLEXT_PROTOTYPES
 #include <GL/glew.h>
-#include <GLFW/glfw3.h>
 
 #include <iostream>
 #include <cstring>
-#include "shaders.hpp"
 
 #include <Eigen/Dense>
 
 #include <fstream>
 #include <memory>
 
-#include "glsl.hpp"
-#include "shaders.hpp"
-#include "tools.hpp"
-
 using namespace std ;
 using namespace Eigen ;
-using namespace cvx::util ;
 
-namespace cvx { namespace renderer {
+extern vector<vsim::renderer::OpenGLShaderLibrary::ShaderConfig> vsim_opengl_shaders_library_shaders ;
+extern vector<vsim::renderer::OpenGLShaderLibrary::ProgramConfig> vsim_opengl_shaders_library_programs ;
+
+namespace vsim { namespace renderer {
 
 
-bool SceneRenderer::init() {
+bool Renderer::init() {
 
-    // init stock shaders
+    // this is needed for non core profiles or instead use gl3w
+    glewExperimental = GL_TRUE ;
 
-    ctx_->attach() ;
-
-    try {
-        programs_["rigid_flat"] = std::make_shared<glsl::Program>(rigid_vertex_shader_rc, flat_fragment_shader_rc) ;
-        programs_["rigid_smooth"] = std::make_shared<glsl::Program>(rigid_vertex_shader_rc, phong_fragment_shader_rc) ;
-        programs_["rigid_gouraud"] = std::make_shared<glsl::Program>(rigid_vertex_shader_rc, gouraud_fragment_shader_rc) ;
-
-        programs_["skinning_flat"] = std::make_shared<glsl::Program>(skinning_vertex_shader_rc, flat_fragment_shader_rc) ;
-        programs_["skinning_smooth"] = std::make_shared<glsl::Program>(skinning_vertex_shader_rc, phong_fragment_shader_rc) ;
-        programs_["skinning_gouraud"] = std::make_shared<glsl::Program>(skinning_vertex_shader_rc, gouraud_fragment_shader_rc) ;
-    }
-    catch ( const glsl::Error &e ) {
-        cerr << e.what() << endl ;
+    GLenum err ;
+    if ( ( err = glewInit() ) != GLEW_OK ) {
+        cerr << glewGetErrorString(err) << endl;
         return false ;
     }
 
+    // init stock shaders
+
+    try {
+        shaders_.build(vsim_opengl_shaders_library_shaders,
+                       vsim_opengl_shaders_library_programs) ;
+    }
+    catch ( const OpenGLShaderError &e ) {
+        cerr << e.what() << endl ;
+        return false ;
+    }
+/*
     // create vertex buffers
 
     for( uint m=0 ; m<scene_->meshes_.size() ; m++ )
@@ -73,33 +72,22 @@ bool SceneRenderer::init() {
     default_material_->type_ = Material::PHONG ;
     default_material_->ambient_ = Vector4f(0.0, 0.0, 0.0, 1) ;
     default_material_->diffuse_ = Vector4f(0.5, 0.5, 0.5, 1) ;
-
+*/
     return true ;
 }
 
-bool SceneRenderer::setShader(const char *fragment_shader_code)
+
+Renderer::Renderer() {
+    init() ;
+}
+
+Renderer::~Renderer()
 {
-    try {
-        programs_["rigid_user"] = std::make_shared<glsl::Program>(rigid_vertex_shader_rc, fragment_shader_code) ;
-        programs_["skinning_user"] = std::make_shared<glsl::Program>(skinning_vertex_shader_rc, fragment_shader_code) ;
-        return true ;
-    }
-    catch ( const glsl::Error &e) {
-        cerr << e.what() << endl ;
-        return false ;
-    }
-}
-
-void SceneRenderer::setBackgroundColor(const Vector4f &clr)
-{
-    bg_clr_ = clr ;
-}
-
-void SceneRenderer::release() {
 
 }
 
 
+#if 0
 void SceneRenderer::clear(MeshData &data) {
     glDeleteVertexArrays(1, &data.vao_) ;
 }
@@ -260,12 +248,6 @@ void SceneRenderer::render(const NodePtr &node, const Camera &cam, const Matrix4
     }
 }
 
-
-SceneRenderer::SceneRenderer(const ScenePtr &scene, RenderingContextPtr ctx): scene_(scene), ctx_(ctx)
-{
-    bg_clr_ << 0, 0, 0, 1 ;
-    init() ;
-}
 
 SceneRenderer::~SceneRenderer() {
     release() ;
@@ -622,6 +604,6 @@ cv::Mat SceneRenderer::getDepth() {
     return depth_scale;
 
 }
-
+#endif
 
 }}

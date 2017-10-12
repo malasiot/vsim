@@ -1,4 +1,4 @@
-#include "glsl.hpp"
+#include <vsim/renderer/ogl_shaders.hpp>
 
 #include <cstring>
 #include <fstream>
@@ -14,7 +14,7 @@ OpenGLShader::OpenGLShader(Type t, const std::string &code): type_(t) {
 
 void OpenGLShader::compileString(const std::string &code, const string &resource_name) {
     if ( ( handle_ = glCreateShader(GLenum(type_)) ) == 0 )
-        throw Error("cannot create shader") ;
+        throw OpenGLShaderError("cannot create shader") ;
 
     const GLchar* p[1];
     p[0] = code.c_str() ;
@@ -35,7 +35,7 @@ void OpenGLShader::compileString(const std::string &code, const string &resource
         if ( !resource_name.empty() ) estrm << "(" << resource_name << ")" ;
         estrm << ": " << InfoLog ;
 
-        throw Error(estrm.str());
+        throw OpenGLShaderError(estrm.str());
     }
 }
 
@@ -69,7 +69,7 @@ void OpenGLShader::compileFile(const std::string &fname, const string &resource_
         estrm << "Error reading shader file " ;
         if ( !resource_name.empty() ) estrm << "(" << resource_name << ")" ;
         estrm << ": " << fname ;
-        throw Error(estrm.str());
+        throw OpenGLShaderError(estrm.str());
     }
 
     if ( resource_name.empty() )
@@ -148,6 +148,10 @@ OpenGLShaderProgram::~OpenGLShaderProgram() {
     glDeleteProgram(handle_) ;
 }
 
+OpenGLShaderProgram::OpenGLShaderProgram() {
+    handle_ = glCreateProgram() ;
+}
+
 void OpenGLShaderProgram::addShader(const OpenGLShader::Ptr &shader) {
     shaders_.push_back(shader) ;
 }
@@ -200,8 +204,39 @@ void OpenGLShaderProgram::link() {
 void OpenGLShaderProgram::throwError(const char *error_str, const char *error_desc) {
     stringstream estrm ;
     estrm << error_str << ':' << error_desc << endl ;
-    throw Error(estrm.str()) ;
+    throw OpenGLShaderError(estrm.str()) ;
 }
+
+OpenGLShader::Type type_from_string(const string &s) {
+    if ( s == "vertex" ) return OpenGLShader::Vertex ;
+    else if ( s == "fragment" ) return OpenGLShader::Fragment ;
+    else if ( s == "geometry" ) return OpenGLShader::Geometry ;
+    else if ( s == "compute" ) return OpenGLShader::Compute ;
+    else if ( s == "tess_control" ) return OpenGLShader::TessControl ;
+    else if ( s == "tess_evaluation" ) return OpenGLShader::TessEvaluation ;
+    else return OpenGLShader::Fragment ;
+}
+
+void OpenGLShaderLibrary::build(const vector<OpenGLShaderLibrary::ShaderConfig> &shaders, const vector<OpenGLShaderLibrary::ProgramConfig> &programs)
+{
+    for ( const auto &shader: shaders ) {
+        auto p = std::make_shared<OpenGLShader>(type_from_string(shader.type_)) ;
+        p->compileString(shader.src_, shader.path_) ;
+        shaders_.emplace(shader.id_, p) ;
+    }
+
+    for ( const auto &prog: programs ) {
+        auto p = std::make_shared<OpenGLShaderProgram>() ;
+        for( const string &shader: prog.shaders_) {
+            auto it = shaders_.find(shader) ;
+            if ( it != shaders_.end() )
+                p->addShader(it->second) ;
+        }
+        p->link() ;
+        programs_.emplace(prog.id_, p) ;
+    }
+}
+
 
 } // namespace renderer
 } // namespace vsim

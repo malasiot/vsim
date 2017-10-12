@@ -1,5 +1,5 @@
-#ifndef GLSL_HPP
-#define GLSL_HPP
+#ifndef __VSIM_OPENGL_SHADERS_HPP__
+#define __VSIM_OPENGL_SHADERS_HPP__
 
 #include <GL/glew.h>
 #include <string>
@@ -80,9 +80,9 @@ private:
 };
 
 
-class Error: public std::runtime_error {
+class OpenGLShaderError: public std::runtime_error {
 public:
-    Error(const std::string &msg):
+    OpenGLShaderError(const std::string &msg):
         std::runtime_error(msg), id_(glGetError()) {}
 
     GLenum glError() const { return id_ ; }
@@ -91,9 +91,26 @@ private:
     GLenum id_ ;
 };
 
-class OpenGLShaderBundle {
 
+class OpenGLShaderLibrary {
+public:
+    OpenGLShaderLibrary() = default ;
 
+    struct ShaderConfig {
+        std::string id_, type_, path_, src_ ;
+    };
+
+    struct ProgramConfig {
+        std::string id_ ;
+        std::vector<std::string> shaders_ ;
+    };
+
+    void build(const std::vector<ShaderConfig> &shaders, const std::vector<ProgramConfig> &programs) ;
+
+private:
+
+    std::map<std::string, OpenGLShader::Ptr> shaders_ ;
+    std::map<std::string, OpenGLShaderProgram::Ptr> programs_ ;
 };
 
 } // namespace renderer

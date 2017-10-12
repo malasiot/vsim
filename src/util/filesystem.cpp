@@ -35,6 +35,7 @@ string basename( const string &pathname ) {
 string get_file_contents(const std::string &fname) {
     ifstream strm(fname) ;
 
+    if ( !strm.good() ) return string() ;
     strm.seekg(0, ios::end);
     size_t length = strm.tellg();
     strm.seekg(0,std::ios::beg);
