@@ -154,7 +154,7 @@ static Matrix4f perspective(float fovy, float aspect, float zNear, float zFar)	{
     return Result;
 }
 
-void RendererImpl::render(const Camera &cam, const Viewport &vw, RenderMode mode) {
+void RendererImpl::render(const Camera &cam, Renderer::RenderMode mode) {
 
     glEnable(GL_DEPTH_TEST) ;
 
@@ -164,16 +164,17 @@ void RendererImpl::render(const Camera &cam, const Viewport &vw, RenderMode mode
     glClearColor(bg_clr_.x(), bg_clr_.y(), bg_clr_.z(), bg_clr_.w()) ;
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-    if ( cam.type_ == Camera::PERSPECTIVE ) {
-        const PerspectiveCamera &pcam = (const PerspectiveCamera &)cam ;
-        perspective_ = perspective(pcam.yfov_, pcam.aspect_ratio_, pcam.znear_, pcam.zfar_) ;
-        znear_ = pcam.znear_ ;
-        zfar_ = pcam.zfar_ ;
+    if ( cam.type() == Camera::Perspective ) {
+        const PerspectiveCamera &pcam = static_cast<const PerspectiveCamera &>(cam) ;
+        perspective_ = pcam.projectionMatrix() ;
+        znear_ = pcam.zNear() ;
+        zfar_ = pcam.zFar() ;
     }
 
-    glViewport(vw.x_, vw.y_, vw.width_, vw.height_);
+    const Viewport &vp = cam.getViewport() ;
+    glViewport(vp.x_, vp.y_, vp.width_, vp.height_);
 
-    proj_ = cam.mat_ ;
+    proj_ = cam.getViewMatrix() ;
 
     // render node hierarchy
 
@@ -183,7 +184,7 @@ void RendererImpl::render(const Camera &cam, const Viewport &vw, RenderMode mode
     }
 }
 
-void RendererImpl::render(const NodePtr &node, const Camera &cam, const Matrix4f &tf, RenderMode mode) {
+void RendererImpl::render(const NodePtr &node, const Camera &cam, const Matrix4f &tf, Renderer::RenderMode mode) {
     Matrix4f mat = node->mat_,
             tr = tf * mat ; // accumulate transform
 
@@ -345,15 +346,15 @@ void RendererImpl::initTextures()
 }
 
 
-void RendererImpl::render(const GeometryPtr &geom, const Camera &cam, const Matrix4f &mat, RenderMode mode)
+void RendererImpl::render(const GeometryPtr &geom, const Camera &cam, const Matrix4f &mat, Renderer::RenderMode mode)
 {
     MeshData &data = buffers_[geom->mesh_] ;
 
-    if ( mode == RENDER_FLAT )
+    if ( mode == Renderer::RENDER_FLAT )
         prog_ = shaders_.get("rigid_flat") ;
-    else if ( mode == RENDER_SMOOTH )
+    else if ( mode == Renderer::RENDER_SMOOTH )
         prog_ = shaders_.get("rigid_smooth") ;
-    else if ( mode == RENDER_GOURAUD )
+    else if ( mode == Renderer::RENDER_GOURAUD )
         prog_ = shaders_.get("rigid_gouraud") ;
 
     assert( prog_ ) ;

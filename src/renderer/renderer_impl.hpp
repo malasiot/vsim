@@ -5,12 +5,11 @@
 
 #include <vsim/renderer/scene.hpp>
 #include <vsim/renderer/ogl_shaders.hpp>
+#include <vsim/renderer/renderer.hpp>
 
 #include <GL/glew.h>
 
 namespace vsim { namespace renderer {
-
-class RendererImpl ;
 
 class RendererImpl {
 public:
@@ -33,11 +32,7 @@ public:
         NUM_VBs
     };
 
-    enum RenderMode { RENDER_FLAT, // no lighting, makes a mask of each object using its diffuse material color
-                          RENDER_SMOOTH, // phong
-                          RENDER_GOURAUD, // phong
-                          RENDER_USER_DEFINED // user defined fragment shader
-                        } ;
+
 
     struct MeshData {
         MeshData() ;
@@ -49,13 +44,13 @@ public:
 
     void clear(MeshData &data);
     void initBuffersForMesh(MeshData &data, Mesh &mesh) ;
-    void initBuffersForSkinning(MeshData &data, SkinningModifier &a) ;
-    void render(const Camera &cam, const Viewport &vw, RenderMode mode) ;
-    void render(const NodePtr &node, const Camera &cam, const Eigen::Matrix4f &mat, RenderMode mode) ;
-    void render(const GeometryPtr &geom, const Camera &cam, const Eigen::Matrix4f &mat, RenderMode mode) ;
+
+    void render(const Camera &cam, Renderer::RenderMode mode) ;
+    void render(const NodePtr &node, const Camera &cam, const Eigen::Matrix4f &mat, Renderer::RenderMode mode) ;
+    void render(const GeometryPtr &geom, const Camera &cam, const Eigen::Matrix4f &mat, Renderer::RenderMode mode) ;
     void setModelTransform(const Eigen::Matrix4f &tf);
     void setMaterial(const MaterialPtr &material) ;
-    void setProgram(RenderMode rm) ;
+    void setProgram(Renderer::RenderMode rm) ;
     void setLights() ;
     void initTextures() ;
 

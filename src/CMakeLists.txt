@@ -15,6 +15,7 @@ SET(OGL_SHADERS
     ${SRC_FOLDER}/renderer/shaders/phong.fs
     ${SRC_FOLDER}/renderer/shaders/flat.fs
     ${SRC_FOLDER}/renderer/shaders/gouraud.fs
+    ${SRC_FOLDER}/renderer/shaders/textured.fs
 )
 
 add_executable(glsl2src ${SRC_FOLDER}/tools/glsl2src.cpp)

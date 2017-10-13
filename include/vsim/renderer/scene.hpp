@@ -105,6 +105,11 @@ struct Geometry {
 
 // Abstract camera
 
+struct Viewport {
+    Viewport() = default ;
+    size_t x_ = 0, y_ = 0, width_, height_ ;
+};
+
 class Camera {
 public:
     enum Type { Perspective, Orthographic } ;
@@ -113,43 +118,45 @@ public:
     virtual ~Camera() {}
 
     void setViewport(size_t w, size_t h) {
-        vp_width_ = w ; vp_height_ = h ;
+        vp_.width_ = w ; vp_.height_ = h ;
     }
 
     void setViewport(size_t x, size_t y, size_t w, size_t h) {
-        vp_width_ = w ; vp_height_ = h ;
-        vp_x_ = x ; vp_y_ = y ;
+        vp_.width_ = w ; vp_.height_ = h ;
+        vp_.x_ = x ; vp_.y_ = y ;
     }
 
-    setViewTransform(const Eigen::Matrix4f &vt) {
+    void setViewTransform(const Eigen::Matrix4f &vt) {
         mat_ = vt ;
     }
 
     Type type() const { return type_ ; }
     Eigen::Matrix4f getViewMatrix() const { return mat_ ; }
-    Viewport getViewport() const { return
+    const Viewport &getViewport() const { return vp_ ; }
 
-private:
+protected:
 
     Type type_ ;
     Eigen::Matrix4f mat_ ; // view transformation
-    float vp_x_ = 0, vp_y_ = 0, vp_width_ = 0, vp_height_ = 0 ;
+    Viewport vp_ ;
 };
 
 // Perspective camera
 
 class PerspectiveCamera: public Camera {
-
-    PerspectiveCamera(float aspect, float yfov): Camera(Perspective) {
-        aspect_ratio_ = aspect ;
-        yfov_ = yfov  ;
-        xfov_ = aspect * yfov ;
-        znear_ = 0.01 ;
-        zfar_ = 10 ;
+public:
+    PerspectiveCamera(float aspect, float yfov, float znear = 0.01, float zfar = 10.0):
+        Camera(Perspective), aspect_(aspect), yfov_(yfov), znear_(znear), zfar_(zfar) {
     }
 
 
-    float xfov_, yfov_, aspect_ratio_, znear_, zfar_ ;
+    Eigen::Matrix4f projectionMatrix() const ;
+    float zNear() const { return znear_ ; }
+    float zFar() const { return zfar_ ; }
+
+protected:
+
+    float yfov_, aspect_, znear_, zfar_ ;
 };
 
 // Orthographic camera

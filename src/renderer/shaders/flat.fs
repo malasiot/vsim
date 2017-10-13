@@ -12,5 +12,5 @@ void main()
 {
 /*    FragColor = gMaterial.diffuse ; */
     FragColor = vec4(1, 1, 1, 1) ;
-};
+}
 
