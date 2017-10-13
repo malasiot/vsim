@@ -1,9 +1,5 @@
-#include <vsim/renderer/renderer.hpp>
-#include <vsim/renderer/ogl_shaders.hpp>
 #include "renderer_impl.hpp"
-
-#define GL_GLEXT_PROTOTYPES
-#include <GL/glew.h>
+#include "tools.hpp"
 
 #include <iostream>
 #include <cstring>
@@ -13,6 +9,9 @@
 #include <fstream>
 #include <memory>
 
+#include <vsim/util/format.hpp>
+#include "soil/SOIL.h"
+
 using namespace std ;
 using namespace Eigen ;
 
@@ -21,29 +20,52 @@ extern vector<vsim::renderer::OpenGLShaderLibrary::ProgramConfig> vsim_opengl_sh
 
 namespace vsim { namespace renderer {
 
+bool RendererImpl::init() {
 
-bool Renderer::init() {
-    return impl_->init() ;
+    // this is needed for non core profiles or instead use gl3w
+    glewExperimental = GL_TRUE ;
+
+    GLenum err ;
+    if ( ( err = glewInit() ) != GLEW_OK ) {
+        cerr << glewGetErrorString(err) << endl;
+        return false ;
+    }
+
+    // init stock shaders
+
+    try {
+        shaders_.build(vsim_opengl_shaders_library_shaders,
+                       vsim_opengl_shaders_library_programs) ;
+    }
+    catch ( const OpenGLShaderError &e ) {
+        cerr << e.what() << endl ;
+        return false ;
+    }
+
+    // create vertex buffers
+
+    for( uint m=0 ; m<scene_->meshes_.size() ; m++ )
+    {
+        MeshData data ;
+        MeshPtr mesh = scene_->meshes_[m] ;
+        initBuffersForMesh(data, *scene_->meshes_[m]);
+        buffers_[mesh] = data ;
+    }
+
+    // load textures
+
+    initTextures() ;
+
+    default_material_.reset(new Material) ;
+
+    default_material_->type_ = Material::PHONG ;
+    default_material_->ambient_.set<Vector4f>(0.0, 0.0, 0.0, 1) ;
+    default_material_->diffuse_.set<Vector4f>(0.5, 0.5, 0.5, 1) ;
+
+    return true ;
 }
 
-void Renderer::render(const Camera &cam, Renderer::RenderMode mode)
-{
-    impl_->render(cam, mode) ;
-}
-
-
-Renderer::Renderer(const ScenePtr &scene): impl_(new RendererImpl(scene)) {
-
-}
-
-Renderer::~Renderer()
-{
-
-}
-
-
-#if 0
-void SceneRenderer::clear(MeshData &data) {
+void RendererImpl::clear(MeshData &data) {
     glDeleteVertexArrays(1, &data.vao_) ;
 }
 
@@ -54,9 +76,9 @@ void SceneRenderer::clear(MeshData &data) {
 #define BONE_WEIGHT_LOCATION    4
 #define UV_LOCATION 5
 
-SceneRenderer::MeshData::MeshData() {}
+RendererImpl::MeshData::MeshData() {}
 
-void SceneRenderer::init_buffers_for_mesh(MeshData &data, Mesh &mesh)
+void RendererImpl::initBuffersForMesh(MeshData &data, Mesh &mesh)
 {
     // Create the VAO
     glGenVertexArrays(1, &data.vao_);
@@ -115,33 +137,6 @@ void SceneRenderer::init_buffers_for_mesh(MeshData &data, Mesh &mesh)
     glBindVertexArray(0);
 }
 
-void SceneRenderer::init_buffers_for_skinning(SceneRenderer::MeshData &data, SkinningModifier &armature)
-{
-    std::vector<SkinningModifier::VertexBoneData> &bone_weights = armature.vertex_weights_ ;
-    std::vector<SkinningModifier::VertexBoneData> flat_weights ;
-
-    for( uint v=0 ; v<armature.skin_->vertex_indices_.size() ; v++) {
-        uint32_t vidx = armature.skin_->vertex_indices_[v] ;
-        const SkinningModifier::VertexBoneData &vb_data = bone_weights[vidx] ;
-        flat_weights.push_back(vb_data) ;
-    } ;
-
-    glBindVertexArray(data.vao_);
-
-    glGenBuffers(1, &data.buffers_[BONE_VB]);
-    glBindBuffer(GL_ARRAY_BUFFER, data.buffers_[BONE_VB]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(flat_weights[0]) * flat_weights.size(), &flat_weights[0], GL_STATIC_DRAW);
-    glEnableVertexAttribArray(BONE_ID_LOCATION);
-    glVertexAttribIPointer(BONE_ID_LOCATION, 4, GL_INT, sizeof(SkinningModifier::VertexBoneData), (const GLvoid*)0);
-
-    glEnableVertexAttribArray(BONE_WEIGHT_LOCATION);
-    glVertexAttribPointer(BONE_WEIGHT_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(SkinningModifier::VertexBoneData), (const GLvoid*)16);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-}
-
 static Matrix4f perspective(float fovy, float aspect, float zNear, float zFar)	{
     assert(abs(aspect - std::numeric_limits<float>::epsilon()) > static_cast<float>(0));
 
@@ -159,7 +154,7 @@ static Matrix4f perspective(float fovy, float aspect, float zNear, float zFar)	{
     return Result;
 }
 
-void SceneRenderer::render(const Camera &cam, RenderMode mode) {
+void RendererImpl::render(const Camera &cam, const Viewport &vw, RenderMode mode) {
 
     glEnable(GL_DEPTH_TEST) ;
 
@@ -171,12 +166,12 @@ void SceneRenderer::render(const Camera &cam, RenderMode mode) {
 
     if ( cam.type_ == Camera::PERSPECTIVE ) {
         const PerspectiveCamera &pcam = (const PerspectiveCamera &)cam ;
-        perspective_ = perspective(pcam.yfov_.get(), pcam.aspect_ratio_.get(), pcam.znear_.get(), pcam.zfar_.get()) ;
-        znear_ = pcam.znear_.get() ;
-        zfar_ = pcam.zfar_.get() ;
+        perspective_ = perspective(pcam.yfov_, pcam.aspect_ratio_, pcam.znear_, pcam.zfar_) ;
+        znear_ = pcam.znear_ ;
+        zfar_ = pcam.zfar_ ;
     }
 
-    glViewport(0, 0, ctx_->width_, ctx_->height_);
+    glViewport(vw.x_, vw.y_, vw.width_, vw.height_);
 
     proj_ = cam.mat_ ;
 
@@ -188,9 +183,9 @@ void SceneRenderer::render(const Camera &cam, RenderMode mode) {
     }
 }
 
-void SceneRenderer::render(const NodePtr &node, const Camera &cam, const Matrix4f &tf, RenderMode mode) {
+void RendererImpl::render(const NodePtr &node, const Camera &cam, const Matrix4f &tf, RenderMode mode) {
     Matrix4f mat = node->mat_,
-    tr = tf * mat ; // accumulate transform
+            tr = tf * mat ; // accumulate transform
 
     for( uint i=0 ; i<node->geometries_.size() ; i++ ) {
         const GeometryPtr &m = node->geometries_[i] ;
@@ -204,11 +199,11 @@ void SceneRenderer::render(const NodePtr &node, const Camera &cam, const Matrix4
 }
 
 
-SceneRenderer::~SceneRenderer() {
-    release() ;
+RendererImpl::~RendererImpl() {
+
 }
 
-void SceneRenderer::set_model_transform(const Matrix4f &tf)
+void RendererImpl::setModelTransform(const Matrix4f &tf)
 {
     Matrix4f mvp =  perspective_ * proj_ * tf;
     Matrix4f mv =   proj_ * tf;
@@ -219,57 +214,54 @@ void SceneRenderer::set_model_transform(const Matrix4f &tf)
     prog_->setUniform("gNormal", wp) ;
 }
 
-void SceneRenderer::set_material(const MaterialPtr &material)
+void RendererImpl::setMaterial(const MaterialPtr &material)
 {
-
-    if (  material->ambient_ && material->ambient_.get().which() == 0 ) {
-        Vector4f clr = boost::get<Vector4f>(material->ambient_.get()) ;
+    if ( material->ambient_.is<Vector4f>() ) {
+        Vector4f clr = material->ambient_.get<Vector4f>() ;
         prog_->setUniform("g_material.ambient", clr) ;
     }
     else
         prog_->setUniform("g_material.ambient", Vector4f(0, 0, 0, 1)) ;
 
-    if (  material->diffuse_ ) {
-        if ( material->diffuse_.get().which() == 0 ) {
-            Vector4f clr = boost::get<Vector4f>(material->diffuse_.get()) ;
-            prog_->setUniform("g_material.diffuse", clr) ;
-            prog_->setUniform("g_material.diffuse_map", false) ;
-        }
-        else {
-            Sampler2D &ts = boost::get<Sampler2D>(material->diffuse_.get()) ;
+    if (  material->diffuse_.is<Vector4f>() ) {
+        Vector4f clr = material->diffuse_.get<Vector4f>() ;
+        prog_->setUniform("g_material.diffuse", clr) ;
+        prog_->setUniform("g_material.diffuse_map", false) ;
+    }
+    else if ( material->diffuse_.is<Sampler2D>() ) {
+        Sampler2D &ts = material->diffuse_.get<Sampler2D>() ;
 
-            prog_->setUniform("texUnit", 0) ;
-            prog_->setUniform("g_material.diffuse_map", true) ;
+        prog_->setUniform("texUnit", 0) ;
+        prog_->setUniform("g_material.diffuse_map", true) ;
 
-            if ( textures_.count(ts.image_url_) ) {
-                glBindTexture(GL_TEXTURE_2D, textures_[ts.image_url_]) ;
-            }
+        if ( textures_.count(ts.image_url_) ) {
+            glBindTexture(GL_TEXTURE_2D, textures_[ts.image_url_]) ;
         }
     }
     else
         prog_->setUniform("g_material.diffuse", Vector4f(0.5, 0.5, 0.5, 1)) ;
 
 
-    if (  material->specular_ && material->specular_.get().which() == 0 ) {
-        Vector4f clr = boost::get<Vector4f>(material->specular_.get()) ;
+    if (  material->specular_.is<Vector4f>() ) {
+        Vector4f clr = material->specular_.get<Vector4f>() ;
         prog_->setUniform("g_material.specular", clr) ;
     }
     else
         prog_->setUniform("g_material.specular", Vector4f(0.5, 0.5, 0.5, 1)) ;
 
-    if (  material->shininess_ )
-        prog_->setUniform("g_material.shininess", material->shininess_.get()) ;
+    if (  material->shininess_.is<Vector4f>() )
+        prog_->setUniform("g_material.shininess", material->shininess_.get<Vector4f>()) ;
     else
         prog_->setUniform("g_material.shininess", 0) ;
 }
 
 #define MAX_LIGHTS 10
 
-void SceneRenderer::set_lights()
+void RendererImpl::setLights()
 {
     for( uint i=0 ; i< MAX_LIGHTS ; i++  ) {
 
-        string vname = format("g_light_source[%d]", i) ;
+        string vname = util::format("g_light_source[%]", i) ;
 
         if ( i >= scene_->lights_.size() ) {
             prog_->setUniform(vname + ".light_type", -1) ;
@@ -318,129 +310,62 @@ void SceneRenderer::set_lights()
 
 }
 
-void SceneRenderer::set_bone_transforms(const SkinningModifierPtr &skm) {
-
-    // global bone map (e.g. multiple skeletons)
-
-    map<string, BonePtr> bone_idx ;
-    for( uint i=0 ; i<skm->skeletons_.size() ; i++ ) {
-        SkeletonPtr sk = skm->skeletons_[i] ;
-        for( uint j=0 ; j<sk->bones_.size() ; j++ ) {
-            BonePtr b = sk->bones_[j] ;
-            bone_idx[b->name_] = b ;
-        }
-    }
-
-    for( uint i=0 ; i<skm->joint_names_.size() ; i++ ) {
-
-        string var_name = format("gBones[%d]", i ) ;
-
-        BonePtr b = bone_idx[skm->joint_names_[i]] ;
-
-        // accumulate transforms to skeleton root
-
-        Matrix4f acc = Matrix4f::Identity() ;
-        do {
-            acc =  b->mat_ * acc ;
-            b = b->parent_ ;
-        } while ( b) ;
-
-        Matrix4f m =   acc  * skm->inv_bind_matrices_[i] ;
-
-        prog_->setUniform(var_name, m) ;
-    }
-
-}
-
-void SceneRenderer::init_textures()
+void RendererImpl::initTextures()
 {
     for( uint i=0 ; i<scene_->materials_.size() ; i++ ) {
 
         MaterialPtr &m = scene_->materials_[i] ;
 
-        if ( m->diffuse_ && m->diffuse_.get().which() == 1 ) {
-            Sampler2D &texture = boost::get<Sampler2D>(m->diffuse_.get()) ;
+        if ( m->diffuse_.is<Sampler2D>() ) {
+            Sampler2D &texture = m->diffuse_.get<Sampler2D>() ;
 
-            cv::Mat image = cv::imread(texture.image_url_) ;
+            glActiveTexture(GL_TEXTURE0);
+            GLuint texture_id = SOIL_load_OGL_texture(texture.image_url_.c_str(),
+                SOIL_LOAD_RGB,
+                SOIL_CREATE_NEW_ID,
+                SOIL_FLAG_POWER_OF_TWO | SOIL_FLAG_MIPMAPS
+              //| SOIL_FLAG_MULTIPLY_ALPHA
+              //| SOIL_FLAG_COMPRESS_TO_DXT
+                | SOIL_FLAG_DDS_LOAD_DIRECT
+              //| SOIL_FLAG_NTSC_SAFE_RGB
+              //| SOIL_FLAG_CoCg_Y
+              //| SOIL_FLAG_TEXTURE_RECTANGLE
+            );
 
-            if ( image.data ) {
-
-//                cv::flip(image, image, 0) ;
-
-                GLuint texture_id ;
-
-                glActiveTexture(GL_TEXTURE0);
-                glGenTextures(1, &texture_id);
-                glBindTexture(GL_TEXTURE_2D, texture_id);
-
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
+            if ( texture_id ) {
                 // Set texture clamping method
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-                glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
-                glPixelStorei( GL_UNPACK_ROW_LENGTH, 0 );
-                glPixelStorei( GL_UNPACK_SKIP_PIXELS, 0 );
-                glPixelStorei( GL_UNPACK_SKIP_ROWS, 0 );
-
-
-                glTexImage2D(GL_TEXTURE_2D,     // Type of texture
-                             0,                 // Pyramid level (for mip-mapping) - 0 is the top level
-                             GL_RGB,            // Internal colour format to convert to
-                             image.cols,
-                             image.rows,
-                             0,                 // Border width in pixels (can either be 1 or 0)
-                             GL_BGR, // Input image format (i.e. GL_RGB, GL_RGBA, GL_BGR etc.)
-                             GL_UNSIGNED_BYTE,  // Image data type
-                             image.ptr());        // The actual image data itself
-
-                glGenerateMipmap(GL_TEXTURE_2D);
-
                 textures_[texture.image_url_] = texture_id ;
             }
         }
+
     }
 }
 
 
-void SceneRenderer::render(const GeometryPtr &geom, const Camera &cam, const Matrix4f &mat, RenderMode mode)
+void RendererImpl::render(const GeometryPtr &geom, const Camera &cam, const Matrix4f &mat, RenderMode mode)
 {
     MeshData &data = buffers_[geom->mesh_] ;
 
-    bool do_skinning = (bool)geom->skin_modifier_  ;
-
-    if ( !do_skinning ) {
-        if ( mode == RENDER_FLAT )
-            prog_ = programs_["rigid_flat"] ;
-        else if ( mode == RENDER_SMOOTH )
-            prog_ = programs_["rigid_smooth"] ;
-        else if ( mode == RENDER_GOURAUD )
-            prog_ = programs_["rigid_gouraud"] ;
-        else if ( mode == RENDER_USER_DEFINED )
-            prog_ = programs_["rigid_user"] ;
-    }
-    else {
-        if ( mode == RENDER_FLAT )
-            prog_ = programs_["skinning_flat"] ;
-        else if ( mode == RENDER_SMOOTH )
-            prog_ = programs_["skinning_smooth"] ;
-        else if ( mode == RENDER_GOURAUD )
-            prog_ = programs_["skinning_gouraud"] ;
-        else if ( mode == RENDER_USER_DEFINED )
-            prog_ = programs_["skinning_user"] ;
-    }
+    if ( mode == RENDER_FLAT )
+        prog_ = shaders_.get("rigid_flat") ;
+    else if ( mode == RENDER_SMOOTH )
+        prog_ = shaders_.get("rigid_smooth") ;
+    else if ( mode == RENDER_GOURAUD )
+        prog_ = shaders_.get("rigid_gouraud") ;
 
     assert( prog_ ) ;
 
     prog_->use() ;
 
-    set_model_transform(mat) ;
-    if ( do_skinning ) set_bone_transforms(geom->skin_modifier_);
-    if ( geom->material_) set_material(geom->material_) ;
-    else set_material(default_material_) ;
-    set_lights() ;
+    setModelTransform(mat) ;
+
+    if ( geom->material_) setMaterial(geom->material_) ;
+    else setMaterial(default_material_) ;
+
+    setLights() ;
 
 #if 0
     glBindVertexArray(data.vao_);
@@ -481,8 +406,8 @@ void SceneRenderer::render(const GeometryPtr &geom, const Camera &cam, const Mat
 #endif
     glUseProgram(0) ;
 }
-
-cv::Mat SceneRenderer::getColor(bool alpha)
+/*
+cv::Mat RendererImpl::getColor(bool alpha)
 {
     if ( alpha )
     {
@@ -510,7 +435,7 @@ cv::Mat SceneRenderer::getColor(bool alpha)
     }
 }
 
-cv::Mat SceneRenderer::getColor(cv::Mat &bg, float alpha)
+cv::Mat RendererImpl::getColor(cv::Mat &bg, float alpha)
 {
     cv::Mat_<cv::Vec3b> mask(ctx_->height_, ctx_->width_) ;
     glReadBuffer(GL_COLOR_ATTACHMENT0);
@@ -524,7 +449,7 @@ cv::Mat SceneRenderer::getColor(cv::Mat &bg, float alpha)
     return dst ;
 }
 
-cv::Mat SceneRenderer::getDepth() {
+cv::Mat RendererImpl::getDepth() {
 
     cv::Mat_<float> depth(ctx_->height_, ctx_->width_);
 
@@ -560,5 +485,6 @@ cv::Mat SceneRenderer::getDepth() {
 
 }
 #endif
+*/
 
 }}

@@ -61,14 +61,15 @@ public:
 
 int main(int argc, char *argv[]) {
 
-    int test = 43 ;
-
-    Format fmt("There are %5.3f items in %s only") ;
-
     glfwRenderingContext ctx(100, 100) ;
 
     ctx.attach() ;
-    Renderer rdr ;
+
+    ScenePtr scene = Scene::load("/home/malasiot/Downloads/greek_column.obj") ;
+    Renderer rdr(scene) ;
+
+    rdr.init() ;
+
     ctx.detach() ;
 
 }

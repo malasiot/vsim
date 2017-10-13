@@ -1,4 +1,6 @@
 #include <vsim/renderer/ogl_shaders.hpp>
+#include <vsim/util/format.hpp>
+#include <vsim/util/filesystem.hpp>
 
 #include <cstring>
 #include <fstream>
@@ -27,53 +29,25 @@ void OpenGLShader::compileString(const std::string &code, const string &resource
     glGetShaderiv(handle_, GL_COMPILE_STATUS, &success);
 
     if ( !success ) {
-        GLchar InfoLog[1024];
-        glGetShaderInfoLog(handle_, 1024, NULL, InfoLog);
+        GLchar info_log[1024];
+        glGetShaderInfoLog(handle_, 1024, NULL, info_log);
 
-        stringstream estrm ;
-        estrm << "Error compiling shader " ;
-        if ( !resource_name.empty() ) estrm << "(" << resource_name << ")" ;
-        estrm << ": " << InfoLog ;
-
-        throw OpenGLShaderError(estrm.str());
+        if ( resource_name.empty()) throw OpenGLShaderError(util::format("Error compilining shader: %", info_log)) ;
+        else throw OpenGLShaderError(util::format("Error compilining shader (%): %", resource_name, info_log)) ;
     }
-}
-
-
-static string basename( const string &pathname ) {
-    return std::string(
-        std::find_if( pathname.rbegin(), pathname.rend(), [] (char ch){ return ch == '\\' || ch == '/'; }).base(),
-        pathname.end() );
-}
-
-static string get_file_contents(const std::string &fname) {
-    ifstream strm(fname) ;
-
-    strm.seekg(0, ios::end);
-    size_t length = strm.tellg();
-    strm.seekg(0,std::ios::beg);
-
-    string res ;
-    res.resize(length) ;
-    strm.read(&res[0], length) ;
-
-    return res ;
 }
 
 void OpenGLShader::compileFile(const std::string &fname, const string &resource_name) {
 
-    string contents = get_file_contents(fname) ;
+    string contents = util::get_file_contents(fname) ;
 
     if ( contents.empty() ) {
-        stringstream estrm ;
-        estrm << "Error reading shader file " ;
-        if ( !resource_name.empty() ) estrm << "(" << resource_name << ")" ;
-        estrm << ": " << fname ;
-        throw OpenGLShaderError(estrm.str());
+        if ( resource_name.empty()) throw OpenGLShaderError(util::format("Error reading shader file: %", fname)) ;
+        else throw OpenGLShaderError(util::format("Error reading shader file (%): %", resource_name, fname)) ;
     }
 
     if ( resource_name.empty() )
-        compileString(contents, basename(fname)) ;
+        compileString(contents, util::basename(fname)) ;
     else
         compileString(contents, resource_name) ;
 }
@@ -94,14 +68,7 @@ OpenGLShaderProgram::OpenGLShaderProgram(const char *vshader_code, const char *f
 
     link();
 }
-/*
-OpenGLShaderProgram::OpenGLShaderProgram(std::initializer_list<ShaderPtr> &shaders)
-{
-    handle_ = glCreateOpenGLShaderProgram();
-    std::copy(shaders.begin(), shaders.end(), std::back_inserter(shaders_)) ;
-    link_and_validate_OpenGLShaderProgram() ;
-}
-*/
+
 void OpenGLShaderProgram::setUniform(const string &name, float v)
 {
     GLint loc = glGetUniformLocation(handle_, name.c_str()) ;
@@ -169,7 +136,7 @@ void OpenGLShaderProgram::addShaderFromFile(OpenGLShader::Type t, const string &
 }
 
 
-void OpenGLShaderProgram::link() {
+void OpenGLShaderProgram::link(bool validate) {
 
     /*
 
@@ -192,19 +159,23 @@ void OpenGLShaderProgram::link() {
         throwError("Error linking shader program", error_log) ;
     }
 
-    glValidateProgram(handle_);
-    glGetProgramiv(handle_, GL_VALIDATE_STATUS, &success);
+    if ( validate ) {
+        glValidateProgram(handle_);
+        glGetProgramiv(handle_, GL_VALIDATE_STATUS, &success);
 
-    if ( !success ) {
-        glGetProgramInfoLog(handle_, sizeof(error_log), NULL, error_log);
-        throwError("Invalid shader program", error_log);
+        if ( !success ) {
+            glGetProgramInfoLog(handle_, sizeof(error_log), NULL, error_log);
+            throwError("Invalid shader program", error_log);
+        }
     }
 }
 
+void OpenGLShaderProgram::use() {
+   glUseProgram(handle_) ;
+}
+
 void OpenGLShaderProgram::throwError(const char *error_str, const char *error_desc) {
-    stringstream estrm ;
-    estrm << error_str << ':' << error_desc << endl ;
-    throw OpenGLShaderError(estrm.str()) ;
+    throw OpenGLShaderError(util::format("%: %", error_str, error_desc)) ;
 }
 
 OpenGLShader::Type type_from_string(const string &s) {
@@ -235,6 +206,12 @@ void OpenGLShaderLibrary::build(const vector<OpenGLShaderLibrary::ShaderConfig> 
         p->link() ;
         programs_.emplace(prog.id_, p) ;
     }
+}
+
+OpenGLShaderProgram::Ptr OpenGLShaderLibrary::get(const string &prog_name) {
+    auto it = programs_.find(prog_name) ;
+    if ( it != programs_.end() ) return it->second ;
+    else return nullptr ;
 }
 
 

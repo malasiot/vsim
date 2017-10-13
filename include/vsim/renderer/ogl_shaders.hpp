@@ -51,8 +51,8 @@ public:
     void addShaderFromString(OpenGLShader::Type t, const std::string &code, const std::string &resource_name = std::string()) ;
     void addShaderFromFile(OpenGLShader::Type t, const std::string &fname, const std::string &resource_name = std::string()) ;
 
-    void link() ;
-    void use() { glUseProgram(handle_) ; }
+    void link(bool validate = true) ;
+    void use() ;
 
     int attributeLocation(const std::string &attr_name) ;
     void bindAttributeLocation(const std::string &attr_name, int loc) ;
@@ -106,6 +106,8 @@ public:
     };
 
     void build(const std::vector<ShaderConfig> &shaders, const std::vector<ProgramConfig> &programs) ;
+
+    OpenGLShaderProgram::Ptr get(const std::string &prog_name) ;
 
 private:
 
