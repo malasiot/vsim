@@ -1,75 +1,95 @@
 #include <vsim/renderer/renderer.hpp>
-#include <GLFW/glfw3.h>
+#include "glfw_window.hpp"
+#include "trackball.hpp"
 
-#include <vsim/util/format.hpp>
 #include <iostream>
 
 using namespace vsim::renderer ;
 using namespace vsim::util ;
 using namespace std ;
+using namespace Eigen ;
 
-class glfwRenderingContext: public RenderingContext {
+class glfwGUI: public glfwRenderWindow {
 public:
 
-    glfwRenderingContext(uint32_t w, uint32_t h): RenderingContext(w, h) {
-        if ( !init()  ) throw std::runtime_error("failed to initialize GL context") ;
+    glfwGUI(ScenePtr scene): glfwRenderWindow(), rdr_(scene), camera_(1.0, 50*M_PI/180, 0.01, 1000) {
     }
 
-    bool init() {
-        if( !glfwInit() ) return false ;
+    void onInit() {
+        rdr_.init() ;
 
-//        glfwSetErrorCallback(error_callback);
+        trackball_.setCamera(&camera_) ;
+        trackball_.initCamera({0.0, 100.0, 500}, {0, 0, 0}, {0, 1, 0}) ;
+    }
 
-        // With an intel card with this glxinfo I have replaced GLFW_OPENGL_COMPAT_PROFILE
-        // to GLFW_OPENGL_CORE_PROFILE
-        // OpenGL renderer string: Mesa DRI Intel(R) HD Graphics 5500 (Broadwell GT2)
-        // OpenGL core profile version string: 3.3 (Core Profile) Mesa 10.5.9
-        // OpenGL core profile shading language version string: 3.30
+    void onResize(int width, int height) {
+        float ratio;
+        ratio = width / (float) height;
 
-        //    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+        camera_.setAspectRatio(ratio) ;
+        camera_.setViewport(width, height)  ;
 
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+        trackball_.setScreenSize(width, height);
+    }
 
-        if ( !( handle_ = glfwCreateWindow(width_, height_, "vsim-test", 0, 0) )) {
-            glfwTerminate();
-            return false ;
+    void onMouseButtonPressed(uint button, size_t x, size_t y, uint flags) override {
+        switch ( button ) {
+            case GLFW_MOUSE_BUTTON_LEFT:
+                trackball_.setLeftClicked(true) ;
+                break ;
+            case GLFW_MOUSE_BUTTON_MIDDLE:
+                trackball_.setMiddleClicked(true) ;
+                break ;
+            case GLFW_MOUSE_BUTTON_RIGHT:
+                trackball_.setRightClicked(true) ;
+                break ;
+        }
+        trackball_.setClickPoint(x, y) ;
+    }
+
+    void onMouseButtonReleased(uint button, size_t x, size_t y, uint flags) override {
+        switch ( button ) {
+            case GLFW_MOUSE_BUTTON_LEFT:
+                trackball_.setLeftClicked(false) ;
+                break ;
+            case GLFW_MOUSE_BUTTON_MIDDLE:
+                trackball_.setMiddleClicked(false) ;
+                break ;
+            case GLFW_MOUSE_BUTTON_RIGHT:
+                trackball_.setRightClicked(false) ;
+                break ;
         }
 
-
-        return true ;
     }
 
-    ~glfwRenderingContext() {
-        glfwDestroyWindow(handle_);
-        glfwTerminate();
+    void onMouseMoved(double xpos, double ypos) override {
+        trackball_.setClickPoint(xpos, ypos) ;
+    }
+
+    void onMouseWheel(double x) {
+        trackball_.setScrollDirection(x>0);
     }
 
 
-    void attach() {
-        glfwMakeContextCurrent(handle_);
+    void onRender() {
+        trackball_.update() ;
+        rdr_.render(camera_, Renderer::RENDER_SMOOTH) ;
     }
 
-    void detach() {
-       glfwMakeContextCurrent(0);
-    }
-
-    GLFWwindow *handle_ ;
+    Renderer rdr_ ;
+    ScenePtr scene_ ;
+    TrackBall trackball_ ;
+    PerspectiveCamera camera_ ;
 };
 
 int main(int argc, char *argv[]) {
 
-    glfwRenderingContext ctx(100, 100) ;
-
-    ctx.attach() ;
 
     ScenePtr scene = Scene::load("/home/malasiot/Downloads/greek_column.obj") ;
-    Renderer rdr(scene) ;
+    scene->addLight(LightPtr(new DirectionalLight(Vector3f(0.5, 0.5, 1), Vector3f(1, 1, 1)))) ;
 
-    rdr.init() ;
+    glfwGUI gui(scene) ;
 
-    ctx.detach() ;
+    gui.run(500, 500) ;
 
 }

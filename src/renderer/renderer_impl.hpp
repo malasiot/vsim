@@ -19,6 +19,8 @@ public:
 
     // initialize renderer
     bool init() ;
+    void setBackgroundColor(const Eigen::Vector4f &clr) { bg_clr_ = clr ; }
+
 
     static const int MAX_TEXTURES = 10 ;
 
@@ -63,7 +65,7 @@ private:
     ScenePtr scene_ ;
     Eigen::Matrix4f perspective_, proj_ ;
     GLuint query_ ;
-    Eigen::Vector4f bg_clr_ ;
+    Eigen::Vector4f bg_clr_= { 0, 0, 0, 1 } ;
     float znear_, zfar_ ;
     MaterialPtr default_material_ ;
     OpenGLShaderProgram::Ptr prog_ ;

@@ -16,9 +16,6 @@
 using namespace std ;
 using namespace Eigen ;
 
-extern vector<vsim::renderer::OpenGLShaderLibrary::ShaderConfig> vsim_opengl_shaders_library_shaders ;
-extern vector<vsim::renderer::OpenGLShaderLibrary::ProgramConfig> vsim_opengl_shaders_library_programs ;
-
 namespace vsim { namespace renderer {
 
 
@@ -36,9 +33,12 @@ Renderer::Renderer(const ScenePtr &scene): impl_(new RendererImpl(scene)) {
 
 }
 
-Renderer::~Renderer()
-{
+Renderer::~Renderer() {
 
+}
+
+void Renderer::setBackgroundColor(const Eigen::Vector4f &clr) {
+    impl_->setBackgroundColor(clr) ;
 }
 
 

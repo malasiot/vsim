@@ -134,6 +134,8 @@ public:
     Eigen::Matrix4f getViewMatrix() const { return mat_ ; }
     const Viewport &getViewport() const { return vp_ ; }
 
+    void lookAt(const Eigen::Vector3f &eye, const Eigen::Vector3f &center, float roll = 0);
+    void lookAt(const Eigen::Vector3f &eye, const Eigen::Vector3f &center, const Eigen::Vector3f &up);
 protected:
 
     Type type_ ;
@@ -149,6 +151,10 @@ public:
         Camera(Perspective), aspect_(aspect), yfov_(yfov), znear_(znear), zfar_(zfar) {
     }
 
+
+    void setAspectRatio(float asp) {
+        aspect_ = asp ;
+    }
 
     Eigen::Matrix4f projectionMatrix() const ;
     float zNear() const { return znear_ ; }

@@ -22,11 +22,16 @@ public:
     // initialize renderer
     bool init() ;
 
+    // set free space color
+    void setBackgroundColor(const Eigen::Vector4f &clr);
+
+    // render scene
     void render(const Camera &cam, RenderMode mode) ;
 
   //  cv::Mat getColor(bool alpha = true);
   //  cv::Mat getColor(cv::Mat &bg, float alpha);
   //  cv::Mat getDepth();
+
 
 private:
 
