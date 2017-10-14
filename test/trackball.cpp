@@ -14,7 +14,7 @@ Eigen::Vector3f TrackBall::Z(0.f, 0.f, 1.f);
 TrackBall::TrackBall() :
     camera_motion_left_click_(ARC),
     camera_motion_middle_click_(ROLL),
-    camera_motion_right_click_(FIRSTPERSON),
+    camera_motion_right_click_(PAN),
     camera_motion_scroll_(ZOOM),
     height_(1),
     is_dragging_(false),
@@ -29,7 +29,7 @@ TrackBall::TrackBall() :
     rotation_sum_(1.f, 0, 0, 0),
     speed_(1.f),
     width_(1),
-    zoom_scale_(.1f),
+    zoom_scale_(20.f),
     zoom_sum_(0.f)
 {
 }
@@ -38,13 +38,6 @@ TrackBall::~TrackBall()
 {
 }
 
-void TrackBall::initCamera(const Vector3f &eye, const Vector3f &center, const Vector3f &up)
-{
-    eye_ = eye ;
-    center_ = center ;
-    up_ = up_ ;
-    camera_->lookAt(eye, center, up);
-}
 
 char TrackBall::clickQuadrant(float x, float y)
 {
@@ -318,9 +311,16 @@ void TrackBall::scroll()
     }
 }
 
-void TrackBall::setCamera(Camera *c) {
+void TrackBall::setCamera(Camera *c, const Vector3f &eye, const Vector3f &center, const Vector3f &up) {
     camera_ = c;
+    eye_ = eye ; center_ = center ; up_ = up_ ;
+    camera_->lookAt(eye, center, up) ;
     freezeTransform();
+}
+
+void TrackBall::setZoomScale(float zoom_scale)
+{
+    zoom_scale_ = zoom_scale ;
 }
 
 void TrackBall::setClickPoint(double x, double y) {

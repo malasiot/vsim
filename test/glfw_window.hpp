@@ -5,6 +5,8 @@
 
 #include <string>
 
+// Adapted from https://github.com/rsmz/trackball/
+
 class glfwRenderWindow
 {
 public:

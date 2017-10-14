@@ -6,9 +6,14 @@
 
 using vsim::renderer::Camera ;
 
+// adapted from https://github.com/rsmz/trackball/
+
 class TrackBall
 {
 public:
+
+    TrackBall();
+    ~TrackBall();
 
     enum CameraMotionType {
         NONE, ARC, FIRSTPERSON, PAN, ROLL, ZOOM
@@ -16,11 +21,6 @@ public:
 
     static Eigen::Vector3f X, Y, Z ;
 
-    TrackBall();
-    ~TrackBall();
-
-
-    void initCamera(const Eigen::Vector3f &eye, const Eigen::Vector3f &center, const Eigen::Vector3f &up) ;
     Eigen::Vector3f computePointOnSphere(float px, float py);
     Eigen::Quaternionf computeRotationBetweenVectors(const Eigen::Vector3f & start,  const Eigen::Vector3f& stop) ;
 
@@ -30,7 +30,8 @@ public:
     CameraMotionType getMotionScroll();
 
     void setScrollDirection(bool up);
-    void setCamera(Camera *c);
+    void setCamera(Camera *c, const Eigen::Vector3f &eye, const Eigen::Vector3f &center, const Eigen::Vector3f &up);
+    void setZoomScale(float zoom_scale) ;
 	void setClickPoint(double x, double y);
 	void setLeftClicked(bool value);
 	void setMiddleClicked(bool value);

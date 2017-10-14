@@ -18,8 +18,9 @@ public:
     void onInit() {
         rdr_.init() ;
 
-        trackball_.setCamera(&camera_) ;
-        trackball_.initCamera({0.0, 100.0, 500}, {0, 0, 0}, {0, 1, 0}) ;
+        trackball_.setCamera(&camera_, {0.0, 100.0, 500}, {0, 0, 0}, {0, 1, 0}) ;
+        trackball_.setZoomScale(20) ;
+
     }
 
     void onResize(int width, int height) {
