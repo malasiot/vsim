@@ -27,10 +27,12 @@ public:
         float ratio;
         ratio = width / (float) height;
 
+        trackball_.setScreenSize(width, height);
+
         camera_.setAspectRatio(ratio) ;
         camera_.setViewport(width, height)  ;
 
-        trackball_.setScreenSize(width, height);
+
     }
 
     void onMouseButtonPressed(uint button, size_t x, size_t y, uint flags) override {
@@ -88,6 +90,20 @@ int main(int argc, char *argv[]) {
 
     ScenePtr scene = Scene::load("/home/malasiot/Downloads/greek_column.obj") ;
     scene->addLight(LightPtr(new DirectionalLight(Vector3f(0.5, 0.5, 1), Vector3f(1, 1, 1)))) ;
+
+    MeshPtr cube = Mesh::createWireCube(50) ;
+    MaterialPtr cube_mat(new Material) ;
+    cube_mat->type_ = Material::CONSTANT ;
+    cube_mat->diffuse_.set<Vector4f>(1, 0, 0, 1) ;
+    scene->addMaterial(cube_mat) ;
+    GeometryPtr cube_geom(new Geometry) ;
+    cube_geom->material_ = cube_mat ;
+    cube_geom->mesh_ = cube ;
+    NodePtr cube_node(new Node) ;
+    cube_node->geometries_.push_back(cube_geom) ;
+    cube_node->mat_.setIdentity() ;
+    scene->addMesh(cube) ;
+    scene->addNode(cube_node) ;
 
     glfwGUI gui(scene) ;
 

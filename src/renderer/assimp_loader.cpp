@@ -14,13 +14,11 @@ using namespace Eigen ;
 using namespace vsim::renderer ;
 using namespace vsim::util ;
 
-static Vector4f color4_to_float4(const aiColor4D &c)
-{
+static Vector4f color4_to_float4(const aiColor4D &c) {
     return Vector4f(c.r, c.g, c.b, c.a) ;
 }
 
-static void importMaterial(Material &data, const struct aiMaterial *mtl, const string &model_path)
-{
+static void importMaterial(Material &data, const struct aiMaterial *mtl, const string &model_path) {
     data.type_ = Material::PHONG ;
 
     aiColor4D diffuse, specular, ambient, emission;
@@ -76,25 +74,21 @@ static void importMaterial(Material &data, const struct aiMaterial *mtl, const s
         data.specular_.set<Vector4f>(0, 0, 0, 0) ;
     }
 
-    int texIndex = 0;
-    aiString texPath; //contains filename of texture
-    aiTextureMapping tmap ;
-    aiTextureMapMode mode ;
+    for( uint tex_index=0 ; tex_index < mtl->GetTextureCount(aiTextureType_DIFFUSE) ; tex_index++ ) {
 
-    if( AI_SUCCESS == mtl->GetTexture(aiTextureType_DIFFUSE, texIndex, &texPath, &tmap, 0, 0, 0, &mode) )
-    {
-        string fileName(texPath.data, texPath.length) ;
-/*
-        Path p(Path(model_path).parent(), fileName) ;
+        aiString tex_path ;
+        aiTextureMapping tmap ;
+        aiTextureMapMode mode ;
 
-        if ( p.exists() ) {
+        if( AI_SUCCESS == mtl->GetTexture(aiTextureType_DIFFUSE, tex_index, &tex_path, &tmap, 0, 0, 0, &mode) ) {
+            string file_name(tex_path.data, tex_path.length) ;
+
             Sampler2D sampler ;
-            sampler.image_url_ = p.toString() ;
-            data.diffuse_ = sampler ;
-        }
-*/
-    }
+            sampler.image_url_ = model_path + '/' + file_name ;
 
+            data.diffuse_.set<Sampler2D>(sampler) ;
+        }
+    }
 }
 
 
@@ -115,9 +109,14 @@ static bool importMeshes(ScenePtr &scene, const aiScene *sc, map<const aiMesh *,
     for( uint m=0 ; m<sc->mNumMeshes ; m++ ) {
         const aiMesh *mesh = sc->mMeshes[m] ;
 
-        if ( mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE ) continue ;
+     //   if ( mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE ) continue ;
 
         MeshPtr smesh(new Mesh) ;
+
+        if ( mesh->mPrimitiveTypes == aiPrimitiveType_TRIANGLE ) smesh->ptype_ = Mesh::Triangles ;
+        else if ( mesh->mPrimitiveTypes == aiPrimitiveType_LINE ) smesh->ptype_ = Mesh::Lines ;
+        else if ( mesh->mPrimitiveTypes == aiPrimitiveType_POINT ) smesh->ptype_ = Mesh::Points ;
+        else continue ;
 
         if ( mesh->HasPositions() ) {
             uint n = mesh->mNumVertices ;

@@ -313,7 +313,7 @@ void TrackBall::scroll()
 
 void TrackBall::setCamera(Camera *c, const Vector3f &eye, const Vector3f &center, const Vector3f &up) {
     camera_ = c;
-    eye_ = eye ; center_ = center ; up_ = up_ ;
+    eye_ = eye ; center_ = center ; up_ = up ;
     camera_->lookAt(eye, center, up) ;
     freezeTransform();
 }

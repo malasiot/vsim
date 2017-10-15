@@ -30,6 +30,18 @@ public:
         lights_.push_back(light) ;
     }
 
+    void addMaterial(const MaterialPtr &mat) {
+        materials_.push_back(mat) ;
+    }
+
+    void addMesh(const MeshPtr &mesh) {
+        meshes_.push_back(mesh) ;
+    }
+
+    void addNode(const NodePtr &node) {
+        nodes_.push_back(node) ;
+    }
+
 public:
 
     std::vector<NodePtr> nodes_ ;           // root nodes of the hierarchy
@@ -70,6 +82,15 @@ struct Mesh {
     std::vector<uint32_t> vertex_indices_, normal_indices_, color_indices_, tex_coord_indices_[MAX_TEXTURES] ;
 
     PrimitiveType ptype_ ;
+
+    static MeshPtr createWireCube(float sz) ;
+    static MeshPtr createSolidCube(float sz) ;
+    void createWireSphere(float radius, size_t slices, size_t stacks) ;
+    void createSolidSphere(float radius, size_t slices, size_t stacks) ;
+    void createWireCone(float radius, size_t slices, size_t stacks) ;
+    void createSolidSphere(float radius, float height, size_t slices, size_t stacks) ;
+    void createWireCylinder(float radius, float height, size_t slices, size_t stacks) ;
+    void createSolidCylinder(float radius, float height, size_t slices, size_t stacks) ;
 };
 
 
@@ -98,6 +119,9 @@ struct Material {
 // Geometry structure associates a mesh instance with material.
 
 struct Geometry {
+    Geometry(const MeshPtr &mesh, const MaterialPtr &mat): mesh_(mesh), material_(mat) {}
+    Geometry() = default ;
+
     MeshPtr mesh_ ;
     MaterialPtr material_ ;
 };

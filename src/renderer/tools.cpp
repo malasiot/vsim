@@ -209,17 +209,15 @@ void flatten_mesh(const Mesh &mesh, std::vector<Vector3f> &vertices, std::vector
         const Vector3f &pos = mesh.vertices_[vidx] ;
         vertices.push_back(pos) ;
 
-        if ( !mesh.normal_indices_.empty() ) {
-            uint32_t nidx = mesh.normal_indices_[v] ;
-            const Vector3f &normal = mesh.normals_[nidx] ;
-            normals.push_back(normal) ;
-        }
-
         if ( !cnormals.empty() ) {
             const Vector3f &normal = cnormals[vidx] ;
             normals.push_back(normal) ;
         }
-        else {
+        else if ( !mesh.normal_indices_.empty() ) {
+            uint32_t nidx = mesh.normal_indices_[v] ;
+            const Vector3f &normal = mesh.normals_[nidx] ;
+            normals.push_back(normal) ;
+        } else {
             const Vector3f &norm = mesh.normals_[vidx] ;
             normals.push_back(norm) ;
         }

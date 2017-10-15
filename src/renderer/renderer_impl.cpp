@@ -157,6 +157,7 @@ static Matrix4f perspective(float fovy, float aspect, float zNear, float zFar)	{
 void RendererImpl::render(const Camera &cam, Renderer::RenderMode mode) {
 
     glEnable(GL_DEPTH_TEST) ;
+    glDepthFunc(GL_LESS);
 
     glEnable(GL_CULL_FACE) ;
     glCullFace(GL_BACK) ;
@@ -400,7 +401,15 @@ void RendererImpl::render(const GeometryPtr &geom, const Camera &cam, const Matr
     glBindVertexArray(0) ;
 #else
     glBindVertexArray(data.vao_);
-    glDrawArrays(GL_TRIANGLES, 0, data.elem_count_) ;
+    if ( geom->mesh_->ptype_ == Mesh::Triangles ) {
+        glDrawArrays(GL_TRIANGLES, 0, data.elem_count_) ;
+    }
+    else if ( geom->mesh_->ptype_ == Mesh::Lines ) {
+        glDrawArrays(GL_LINES, 0, data.elem_count_) ;
+    }
+    else if ( geom->mesh_->ptype_ == Mesh::Points ) {
+        glDrawArrays(GL_POINTS, 0, data.elem_count_) ;
+    }
     glBindVertexArray(0) ;
 
     glFlush();
