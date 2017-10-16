@@ -200,7 +200,7 @@ void flatten_mesh(const Mesh &mesh, std::vector<Vector3f> &vertices, std::vector
 {
     vector<Vector3f> cnormals ;
 
-    if ( mesh.normals_.empty() )
+    if ( mesh.normals_.empty() && mesh.ptype_ == Mesh::Triangles )
         compute_normals(mesh.vertices_, mesh.vertex_indices_, cnormals );
 
     for( uint v=0 ; v<mesh.vertex_indices_.size() ; v++) {
@@ -217,7 +217,7 @@ void flatten_mesh(const Mesh &mesh, std::vector<Vector3f> &vertices, std::vector
             uint32_t nidx = mesh.normal_indices_[v] ;
             const Vector3f &normal = mesh.normals_[nidx] ;
             normals.push_back(normal) ;
-        } else {
+        } else if ( !mesh.normals_.empty() ){
             const Vector3f &norm = mesh.normals_[vidx] ;
             normals.push_back(norm) ;
         }

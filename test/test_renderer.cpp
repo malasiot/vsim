@@ -19,8 +19,8 @@ public:
         rdr_.init() ;
 
         trackball_.setCamera(&camera_, {0.0, 100.0, 500}, {0, 0, 0}, {0, 1, 0}) ;
+        //  trackball_.setCamera(&camera_, {0.0, 1, 5}, {0, 0, 0}, {0, 1, 0}) ;
         trackball_.setZoomScale(20) ;
-
     }
 
     void onResize(int width, int height) {
@@ -89,9 +89,10 @@ int main(int argc, char *argv[]) {
 
 
     ScenePtr scene = Scene::load("/home/malasiot/Downloads/greek_column.obj") ;
+     //ScenePtr scene = Scene::load("/home/malasiot/Downloads/cube.obj") ;
     scene->addLight(LightPtr(new DirectionalLight(Vector3f(0.5, 0.5, 1), Vector3f(1, 1, 1)))) ;
 
-    MeshPtr cube = Mesh::createWireCube(50) ;
+    MeshPtr cube = Mesh::createWireCylinder(50, 100, 10, 10) ;
     MaterialPtr cube_mat(new Material) ;
     cube_mat->type_ = Material::CONSTANT ;
     cube_mat->diffuse_.set<Vector4f>(1, 0, 0, 1) ;

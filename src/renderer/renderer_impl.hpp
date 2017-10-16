@@ -22,7 +22,7 @@ public:
     void setBackgroundColor(const Eigen::Vector4f &clr) { bg_clr_ = clr ; }
 
 
-    static const int MAX_TEXTURES = 10 ;
+    static const int MAX_TEXTURES = 4 ;
 
     enum VB_TYPES {
         INDEX_BUFFER,

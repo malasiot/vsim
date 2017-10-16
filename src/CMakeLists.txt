@@ -40,11 +40,5 @@ set(RENDERER_FILES
     ${CMAKE_BINARY_DIR}/vsim_shaders_library.cpp
 )
 
-file (GLOB SOIL_SOURCES  ${SRC_FOLDER}/renderer/soil/*.c)
-file (GLOB SOIL_HEADERS  ${SRC_FOLDER}/renderer/soil/*.h)
-add_library (SOIL STATIC ${SOIL_SOURCES} ${SOIL_HEADERS})
-target_link_libraries (SOIL ${OPENGL_LIBRARIES})
-
-
 add_library(vsim_renderer ${RENDERER_FILES})
-target_link_libraries(vsim_renderer vsim_util SOIL ${ASSIMP_LIBRARIES} ${OPENGL_LIBRARIES} ${GLFW3_LIBRARY} ${GLEW_LIBRARIES})
+target_link_libraries(vsim_renderer vsim_util ${ASSIMP_LIBRARIES} ${OPENGL_LIBRARIES} ${GLFW3_LIBRARY} ${GLEW_LIBRARIES} ${FREEIMAGE_LIBRARIES})

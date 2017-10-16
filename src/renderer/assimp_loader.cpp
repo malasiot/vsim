@@ -74,20 +74,20 @@ static void importMaterial(Material &data, const struct aiMaterial *mtl, const s
         data.specular_.set<Vector4f>(0, 0, 0, 0) ;
     }
 
-    for( uint tex_index=0 ; tex_index < mtl->GetTextureCount(aiTextureType_DIFFUSE) ; tex_index++ ) {
+    string model_dir, model_base, model_ext ;
+    split_path(model_path, model_dir, model_base, model_ext) ;
 
-        aiString tex_path ;
-        aiTextureMapping tmap ;
-        aiTextureMapMode mode ;
+    aiString tex_path ;
+    aiTextureMapping tmap ;
+    aiTextureMapMode mode ;
 
-        if( AI_SUCCESS == mtl->GetTexture(aiTextureType_DIFFUSE, tex_index, &tex_path, &tmap, 0, 0, 0, &mode) ) {
-            string file_name(tex_path.data, tex_path.length) ;
+    if ( AI_SUCCESS == mtl->GetTexture(aiTextureType_DIFFUSE, 0, &tex_path, &tmap, 0, 0, 0, &mode) ) {
+        string file_name(tex_path.data, tex_path.length) ;
 
-            Sampler2D sampler ;
-            sampler.image_url_ = model_path + '/' + file_name ;
+        Sampler2D sampler ;
+        sampler.image_url_ = model_dir + '/' + file_name ;
 
-            data.diffuse_.set<Sampler2D>(sampler) ;
-        }
+        data.texture_.set<Sampler2D>(sampler) ;
     }
 }
 

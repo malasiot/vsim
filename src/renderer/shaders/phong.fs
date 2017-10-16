@@ -32,6 +32,7 @@ struct MaterialParameters
    vec4 ambient;     // Acm
    vec4 diffuse;     // Dcm
    bool diffuse_map;
+   bool is_constant;
    vec4 specular;    // Scm
    float shininess;  // Srm
 };
@@ -40,11 +41,9 @@ uniform MaterialParameters g_material;
 
 out vec4 FragColor;
 
-void main (void)
-{
-   vec3 N = normalize(Normal0);
+vec4 phongIllumination() {
+	vec3 N = normalize(Normal0);
    vec4 finalColor = vec4(0.0, 0.0, 0.0, 1.0);
-
 
    for (int i=0;i<MAX_LIGHTS;i++)
    {
@@ -85,10 +84,7 @@ void main (void)
 
 	  vec3 E = normalize(-WorldPos0); // we are in Eye Coordinates, so EyePos is (0,0,0)
 	  vec3 R = normalize(-reflect(L,N));
-
-	  //calculate Ambient Term:
-      vec4 Iamb = vec4(g_light_source[i].color, 1.0) * g_material.ambient;
-
+	  
 	  //calculate Diffuse Term:
 
       vec4 dc ;
@@ -105,12 +101,19 @@ void main (void)
 			 * pow(max(dot(R,E),0.0),g_material.shininess);
 	  Ispec = clamp(Ispec, 0.0, 1.0);
 
-	 finalColor +=  att*(Iamb + Idiff + Ispec);
+	 finalColor +=  att*clamp(Ispec + Idiff, 0.0, 1.0);
 	 
 	 
 
    }
+   
+   return finalColor ;
+}
 
-   // write Total Color:
-  FragColor = finalColor;
+void main (void)
+{
+	if ( g_material.is_constant ) 
+		FragColor = g_material.diffuse ;
+	else
+		FragColor = phongIllumination();
 }

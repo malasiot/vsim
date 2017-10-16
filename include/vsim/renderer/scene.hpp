@@ -83,14 +83,21 @@ struct Mesh {
 
     PrimitiveType ptype_ ;
 
+    // a 3d cube
+
     static MeshPtr createWireCube(float sz) ;
     static MeshPtr createSolidCube(float sz) ;
+
     void createWireSphere(float radius, size_t slices, size_t stacks) ;
     void createSolidSphere(float radius, size_t slices, size_t stacks) ;
-    void createWireCone(float radius, size_t slices, size_t stacks) ;
-    void createSolidSphere(float radius, float height, size_t slices, size_t stacks) ;
-    void createWireCylinder(float radius, float height, size_t slices, size_t stacks) ;
-    void createSolidCylinder(float radius, float height, size_t slices, size_t stacks) ;
+
+    // the base of the cone is on (0, 0, 0) aligned with the z-axis and pointing towards positive z
+
+    static MeshPtr createWireCone(float radius, float height, size_t slices, size_t stacks) ;
+    static MeshPtr createSolidCone(float radius, float height, size_t slices, size_t stacks) ;
+
+    static MeshPtr createWireCylinder(float radius, float height, size_t slices, size_t stacks) ;
+    static MeshPtr createSolidCylinder(float radius, float height, size_t slices, size_t stacks) ;
 };
 
 
@@ -100,19 +107,16 @@ struct Sampler2D {
     std::string wrap_s_, wrap_t_ ;
 };
 
-struct None {} ;
-
-typedef util::variant<Eigen::Vector4f, Sampler2D> ColorOrTexture ;
-
 struct Material {
     enum Type { PHONG, LAMBERTIAN, BLINN, CONSTANT } ;
 
     std::string name_ ;
     Type type_ ;        // type of material
-    ColorOrTexture emission_, ambient_, diffuse_,
-    specular_, reflective_, transparent_ ; // material component color or associated texture map
+    util::variant<Eigen::Vector4f> emission_, ambient_, diffuse_,
+    specular_, reflective_, transparent_ ;
 
     util::variant<float> reflectivity_, shininess_, transparency_ ;
+    util::variant<Sampler2D> texture_ ;
 };
 
 

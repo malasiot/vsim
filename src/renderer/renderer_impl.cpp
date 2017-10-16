@@ -10,7 +10,7 @@
 #include <memory>
 
 #include <vsim/util/format.hpp>
-#include "soil/SOIL.h"
+#include <FreeImage.h>
 
 using namespace std ;
 using namespace Eigen ;
@@ -81,13 +81,14 @@ RendererImpl::MeshData::MeshData() {}
 void RendererImpl::initBuffersForMesh(MeshData &data, Mesh &mesh)
 {
     // Create the VAO
+
     glGenVertexArrays(1, &data.vao_);
     glBindVertexArray(data.vao_);
 
     vector<Vector3f> vertices, normals, colors ;
     vector<Vector2f> tex_coords[MAX_TEXTURES] ;
-    vector<GLuint> indices ;
 
+    // inefficient but only done at startup
     flatten_mesh(mesh, vertices, normals, colors, tex_coords) ;
     data.elem_count_ = vertices.size() ;
 
@@ -123,35 +124,14 @@ void RendererImpl::initBuffersForMesh(MeshData &data, Mesh &mesh)
         }
     }
 
-    if ( !indices.empty() ) {
-        glGenBuffers(1, &data.buffers_[INDEX_BUFFER]);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.buffers_[INDEX_BUFFER]);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
-    }
-
+#if 0
     glGenBuffers(1, &data.buffers_[TF_VB]);
     glBindBuffer(GL_ARRAY_BUFFER, data.buffers_[TF_VB]);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat) * 3, 0, GL_STATIC_READ);
+#endif
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-}
-
-static Matrix4f perspective(float fovy, float aspect, float zNear, float zFar)	{
-    assert(abs(aspect - std::numeric_limits<float>::epsilon()) > static_cast<float>(0));
-
-    float const d = 1/tan(fovy / static_cast<float>(2));
-
-    Matrix4f Result ;
-    Result.setZero() ;
-
-    Result(0, 0) = d / aspect ;
-    Result(1, 1) = d ;
-    Result(2, 2) =  (zFar + zNear) / (zNear - zFar);
-    Result(2, 3) =  2 * zFar * zNear /(zNear - zFar) ;
-    Result(3, 2) = -1 ;
-
-    return Result;
 }
 
 void RendererImpl::render(const Camera &cam, Renderer::RenderMode mode) {
@@ -218,6 +198,11 @@ void RendererImpl::setModelTransform(const Matrix4f &tf)
 
 void RendererImpl::setMaterial(const MaterialPtr &material)
 {
+    if ( material->type_ == Material::CONSTANT )
+        prog_->setUniform("g_material.is_constant", true) ;
+    else
+        prog_->setUniform("g_material.is_constant", false) ;
+
     if ( material->ambient_.is<Vector4f>() ) {
         Vector4f clr = material->ambient_.get<Vector4f>() ;
         prog_->setUniform("g_material.ambient", clr) ;
@@ -230,8 +215,11 @@ void RendererImpl::setMaterial(const MaterialPtr &material)
         prog_->setUniform("g_material.diffuse", clr) ;
         prog_->setUniform("g_material.diffuse_map", false) ;
     }
-    else if ( material->diffuse_.is<Sampler2D>() ) {
-        Sampler2D &ts = material->diffuse_.get<Sampler2D>() ;
+    else
+        prog_->setUniform("g_material.diffuse", Vector4f(0.5, 0.5, 0.5, 1)) ;
+
+    if ( material->texture_.valid() ) {
+        Sampler2D &ts = material->texture_.get<Sampler2D>() ;
 
         prog_->setUniform("texUnit", 0) ;
         prog_->setUniform("g_material.diffuse_map", true) ;
@@ -240,9 +228,6 @@ void RendererImpl::setMaterial(const MaterialPtr &material)
             glBindTexture(GL_TEXTURE_2D, textures_[ts.image_url_]) ;
         }
     }
-    else
-        prog_->setUniform("g_material.diffuse", Vector4f(0.5, 0.5, 0.5, 1)) ;
-
 
     if (  material->specular_.is<Vector4f>() ) {
         Vector4f clr = material->specular_.get<Vector4f>() ;
@@ -251,10 +236,10 @@ void RendererImpl::setMaterial(const MaterialPtr &material)
     else
         prog_->setUniform("g_material.specular", Vector4f(0.5, 0.5, 0.5, 1)) ;
 
-    if (  material->shininess_.is<Vector4f>() )
-        prog_->setUniform("g_material.shininess", material->shininess_.get<Vector4f>()) ;
+    if (  material->shininess_.valid() )
+        prog_->setUniform("g_material.shininess", material->shininess_.get<float>()) ;
     else
-        prog_->setUniform("g_material.shininess", 0) ;
+        prog_->setUniform("g_material.shininess", (float)1.0) ;
 }
 
 #define MAX_LIGHTS 10
@@ -318,29 +303,57 @@ void RendererImpl::initTextures()
 
         MaterialPtr &m = scene_->materials_[i] ;
 
-        if ( m->diffuse_.is<Sampler2D>() ) {
-            Sampler2D &texture = m->diffuse_.get<Sampler2D>() ;
+        if ( m->texture_.valid() ) {
+            Sampler2D &texture = m->texture_.get<Sampler2D>() ;
 
-            glActiveTexture(GL_TEXTURE0);
-            GLuint texture_id = SOIL_load_OGL_texture(texture.image_url_.c_str(),
-                SOIL_LOAD_RGB,
-                SOIL_CREATE_NEW_ID,
-                SOIL_FLAG_POWER_OF_TWO | SOIL_FLAG_MIPMAPS
-              //| SOIL_FLAG_MULTIPLY_ALPHA
-              //| SOIL_FLAG_COMPRESS_TO_DXT
-                | SOIL_FLAG_DDS_LOAD_DIRECT
-              //| SOIL_FLAG_NTSC_SAFE_RGB
-              //| SOIL_FLAG_CoCg_Y
-              //| SOIL_FLAG_TEXTURE_RECTANGLE
-            );
+            FIBITMAP* image = FreeImage_Load(
+                        FreeImage_GetFileType(texture.image_url_.c_str(), 0),
+                        texture.image_url_.c_str());
 
-            if ( texture_id ) {
+            if ( image ) {
+                GLuint texture_id ;
+                glEnable(GL_TEXTURE_2D) ;
+                glActiveTexture(GL_TEXTURE0);
+                glGenTextures(1, &texture_id);
+                glBindTexture(GL_TEXTURE_2D, texture_id);
+
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
                 // Set texture clamping method
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
+                glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
+                glPixelStorei( GL_UNPACK_ROW_LENGTH, 0 );
+                glPixelStorei( GL_UNPACK_SKIP_PIXELS, 0 );
+                glPixelStorei( GL_UNPACK_SKIP_ROWS, 0 );
+
+                int w = FreeImage_GetWidth(image);
+                int h = FreeImage_GetHeight(image);
+
+                FIBITMAP* im_rgba = FreeImage_ConvertTo32Bits(image);
+
+                FreeImage_Unload(image);
+
+                glTexImage2D(GL_TEXTURE_2D,     // Type of texture
+                             0,                 // Pyramid level (for mip-mapping) - 0 is the top level
+                             GL_RGBA8,            // Internal colour format to convert to
+                             w,
+                             h,
+                             0,                 // Border width in pixels (can either be 1 or 0)
+                             GL_BGRA, // Input image format (i.e. GL_RGB, GL_RGBA, GL_BGR etc.)
+                             GL_UNSIGNED_BYTE,  // Image data type
+                             (void*)FreeImage_GetBits(im_rgba)
+                             );        // The actual image data itself
+
+                glGenerateMipmap(GL_TEXTURE_2D);
+
                 textures_[texture.image_url_] = texture_id ;
+
+                FreeImage_Unload(im_rgba);
             }
+
         }
 
     }
