@@ -71,6 +71,8 @@ public:
 
     ~OpenGLShaderProgram() ;
 
+    GLuint handle() const { return handle_ ; }
+
 private:
 
     void throwError(const char *error_str, const char *error_desc) ;

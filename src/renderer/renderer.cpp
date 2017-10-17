@@ -28,6 +28,11 @@ void Renderer::render(const Camera &cam, Renderer::RenderMode mode)
     impl_->render(cam, mode) ;
 }
 
+void Renderer::renderText(const string &text, float x, float y)
+{
+    impl_->renderText(text, x, y) ;
+}
+
 
 Renderer::Renderer(const ScenePtr &scene): impl_(new RendererImpl(scene)) {
 

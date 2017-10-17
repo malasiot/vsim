@@ -9,6 +9,9 @@
 
 #include <GL/glew.h>
 
+#include "ftgl/texture-font.h"
+#include "ftgl/texture-atlas.h"
+
 namespace vsim { namespace renderer {
 
 class RendererImpl {
@@ -43,6 +46,19 @@ public:
         GLuint elem_count_ ;
     };
 
+    struct FontData {
+        ftgl::texture_atlas_t *atlas_ = nullptr ;
+        ftgl::texture_font_t *font_ = nullptr ;
+        GLuint texture_id_ = 0 ;
+
+        ~FontData() {
+            if ( font_ )
+                ftgl::texture_font_delete(font_) ;
+            if ( atlas_ )
+                ftgl::texture_atlas_delete(atlas_) ;
+        }
+    };
+
 
     void clear(MeshData &data);
     void initBuffersForMesh(MeshData &data, Mesh &mesh) ;
@@ -55,7 +71,8 @@ public:
     void setProgram(Renderer::RenderMode rm) ;
     void setLights() ;
     void initTextures() ;
-
+    void renderText(const std::string &text, float x, float y) ;
+    void initFontData() ;
 private:
 
     OpenGLShaderLibrary shaders_ ;
@@ -69,7 +86,8 @@ private:
     float znear_, zfar_ ;
     MaterialPtr default_material_ ;
     OpenGLShaderProgram::Ptr prog_ ;
-
+    OpenGLShaderProgram::Ptr text_prog_ ;
+    FontData font_data_ ;
 } ;
 
 

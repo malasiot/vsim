@@ -12,6 +12,9 @@
 #include <vsim/util/format.hpp>
 #include <FreeImage.h>
 
+#include "ftgl/texture-font.h"
+
+
 using namespace std ;
 using namespace Eigen ;
 
@@ -55,6 +58,8 @@ bool RendererImpl::init() {
     // load textures
 
     initTextures() ;
+
+    initFontData() ;
 
     default_material_.reset(new Material) ;
 
@@ -357,6 +362,302 @@ void RendererImpl::initTextures()
         }
 
     }
+}
+
+static void make_text_buffer_data( ftgl::texture_font_t * font,  const char *text, float x, float y, const Vector4f &color, vector<Vector3f> &vertices, vector<Vector2f> &uvs, vector<Vector4f> &colors, vector<GLuint> &indices )
+{
+    float r = color.x(), g = color.y(), b = color.z(), a = color.w();
+    float penx = x, peny = y ;
+
+    using namespace ftgl ;
+
+    for( size_t i = 0 ; i<strlen(text) ; i++ ) {
+
+        texture_glyph_t *glyph = texture_font_get_glyph( font, text + i );
+
+        if ( glyph  ) {
+            float kerning = 0.0f;
+            if ( i > 0 )
+                kerning = texture_glyph_get_kerning( glyph, text + i - 1 );
+
+            penx += kerning;
+
+            float x0  = penx + glyph->offset_x ;
+            float y0  = peny + glyph->offset_y ;
+            float x1  = x0 + glyph->width ;
+            float y1  = y0 - glyph->height ;
+            float s0 = glyph->s0;
+            float t0 = glyph->t0;
+            float s1 = glyph->s1;
+            float t1 = glyph->t1;
+
+            float scale = 1.0 ;
+            vertices.emplace_back(x0*scale, y0*scale,0) ; uvs.emplace_back(s0,t0) ; colors.emplace_back(r,g,b,a) ;
+            vertices.emplace_back(x1*scale,y0*scale,0) ; uvs.emplace_back(s1,t0) ; colors.emplace_back(r,g,b,a) ;
+            vertices.emplace_back(x1*scale,y1*scale,0) ; uvs.emplace_back(s1,t1) ; colors.emplace_back(r,g,b,a) ;
+            vertices.emplace_back(x0*scale,y1*scale,0) ; uvs.emplace_back(s0,t1) ; colors.emplace_back(r,g,b,a) ;
+
+            size_t idx = 4*i ;
+            indices.push_back(idx) ;
+            indices.push_back(idx+1) ;
+            indices.push_back(idx+2) ;
+            indices.push_back(idx) ;
+            indices.push_back(idx+2) ;
+            indices.push_back(idx+3) ;
+
+            penx += glyph->advance_x;
+        }
+    }
+}
+
+void
+mat4_set_orthographic( Matrix4f &mat,
+                       float left,   float right,
+                       float bottom, float top,
+                       float znear,  float zfar )
+{
+    if (left == right || bottom == top || znear == zfar)  return;
+
+    mat.setZero() ;
+
+    mat(0, 0) = +2.0f/(right-left);
+    mat(1, 1) = +2.0f/(top-bottom);
+    mat(2, 2) = +2.0f/(zfar-znear);
+    mat(3, 0) = -(right+left)/(right-left);
+    mat(3, 1) = -(top+bottom)/(top-bottom);
+    mat(3, 2) = -(zfar+znear)/(zfar-znear);
+    mat(3, 3) = 1.0f;
+}
+
+void RendererImpl::renderText(const string &text, float x, float y)
+{
+    Vector4f color(1, 1, 1, 1) ;
+
+    text_prog_->use() ;
+
+    Matrix4f projection ;
+
+    GLint v[4];
+    glGetIntegerv( GL_VIEWPORT, v );
+    GLint width  = v[2];
+    GLint height = v[3];
+
+//    glViewport(0, 0, width, height);
+
+    projection.setIdentity() ;
+    projection(0, 0) = 1.0/width ;
+    projection(1, 1) = 1.0/height ;
+    projection(3, 3) = 1 ;
+
+    Affine3f model ;
+    model.setIdentity();
+
+    Affine3f view ;
+    view.setIdentity();
+
+    model.translate(Vector3f(width * x, height * y, 0.0)) ;
+    model.scale(Vector3f(0.5, 0.5, 0)) ;
+
+    text_prog_->setUniform("u_texture", 0);
+    text_prog_->setUniform("u_color", color) ;
+    text_prog_->setUniform("u_model", model.matrix()) ;
+    text_prog_->setUniform("u_view", view.matrix()) ;
+    text_prog_->setUniform("u_projection", projection) ;
+
+    vector<Vector3f> vertices ;
+    vector<Vector4f> colors ;
+    vector<Vector2f> uvs ;
+    vector<GLuint> indices ;
+
+    make_text_buffer_data(font_data_.font_, text.c_str(), 0, 0, color, vertices, uvs, colors, indices);
+
+    GLuint vao, vbo_vtx, vbo_uvs, vbo_colors, vbo_indices ;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    glGenBuffers(1, &vbo_vtx);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_vtx);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat) * 3, &vertices[0], GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
+    glGenBuffers(1, &vbo_uvs);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_uvs);
+    glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(GLfloat) * 2, (GLfloat *)uvs.data(), GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+
+    glGenBuffers(1, &vbo_colors);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_colors);
+    glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(GLfloat) * 4, (GLfloat *)colors.data(), GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, NULL);
+
+    glGenBuffers(1, &vbo_indices);
+    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, vbo_indices );
+    glBufferData( GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_DYNAMIC_DRAW );
+
+    glDisable(GL_DEPTH_TEST) ;
+
+    glDisable(GL_CULL_FACE) ;
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, font_data_.texture_id_);
+    glEnable( GL_TEXTURE_2D );
+    glEnable( GL_BLEND );
+    glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+/*
+    for( uint i=0 ; i<vertices.size() ; i++ ) {
+        Vector4f p(vertices[i].x(), vertices[i].y(), vertices[i].z(), 1.0) ;
+        Vector4f o = projection * view * model * p ;
+        cout << o.adjoint() << endl;
+    }
+    */
+    if ( 0 ) {
+        GLuint vbo_tf ;
+        glGenBuffers(1, &vbo_tf);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_tf);
+
+        vector<Vector4f> tf_data ;
+        tf_data.resize(vertices.size()) ;
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float)* 4, nullptr, GL_STATIC_READ);
+        glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, vbo_tf);
+
+        glEnable(GL_RASTERIZER_DISCARD);
+
+        glBeginTransformFeedback(GL_TRIANGLES);
+        glDrawElements( GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, (void *)0 );
+        glEndTransformFeedback();
+
+        glFlush();
+        glDisable(GL_RASTERIZER_DISCARD);
+
+        glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, 0, vertices.size() * sizeof(float) * 4, tf_data.data());
+
+        glBindVertexArray(0) ;
+    }
+    else {
+        glDrawElements( GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, (void *)0 );
+        glFlush() ;
+
+    }
+
+     glDeleteVertexArrays(1, &vao) ;
+
+
+}
+
+static const string sdf_text_shader_vs = R"(
+    #version 330
+
+    layout (location = 0) in vec3 vertex;
+    layout (location = 1) in vec2 tex_coord;
+    layout (location = 2) in vec4 color;
+
+    uniform mat4 u_model;
+    uniform mat4 u_view;
+    uniform mat4 u_projection;
+    uniform vec4 u_color;
+
+    out vec2 uvs ;
+    out vec4 v_colors ;
+    out vec4 v_position ;
+
+    void main(void)
+    {
+        uvs = tex_coord ;
+        v_colors = color * u_color;
+        v_position = u_projection*(u_view*(u_model*vec4(vertex,1.0)));
+        gl_Position = v_position ;
+    }
+)" ;
+
+static const string sdf_text_shader_fs = R"(
+    #version 330
+    uniform sampler2D u_texture;
+
+    vec3 glyph_color    = vec3(1.0,1.0,1.0);
+    const float glyph_center   = 0.50;
+    vec3 outline_color  = vec3(0.0,0.0,0.0);
+    const float outline_center = 0.55;
+    vec3 glow_color     = vec3(1.0,1.0,1.0);
+    const float glow_center    = 1.25;
+
+    in vec2 uvs;
+    in vec4 v_colors ;
+
+    out vec4 fragColor;
+
+    void main(void)
+    {
+        vec4  color = texture2D(u_texture, uvs);
+        float dist  = color.r;
+        float width = fwidth(dist);
+        float alpha = smoothstep(glyph_center-width, glyph_center+width, dist);
+
+        // Smooth
+        // fragColor = vec4(glyph_color, alpha);
+        //fragColor = vec4(1, 0, 1, 1) ;
+        // Outline
+        // float mu = smoothstep(outline_center-width, outline_center+width, dist);
+        // vec3 rgb = mix(outline_color, glyph_color, mu);
+        // fragColor = vec4(rgb, max(alpha,mu));
+
+        // Glow
+        //vec3 rgb = mix(glow_color, glyph_color, alpha);
+        //float mu = smoothstep(glyph_center, glow_center, sqrt(dist));
+        //gl_FragColor = vec4(rgb, max(alpha,mu));
+
+        // Glow + outline
+        vec3 rgb = mix(glow_color, glyph_color, alpha);
+        float mu = smoothstep(glyph_center, glow_center, sqrt(dist));
+        color = vec4(rgb, max(alpha,mu));
+        float beta = smoothstep(outline_center-width, outline_center+width, dist);
+        rgb = mix(outline_color, color.rgb, beta);
+        fragColor = vec4(rgb, max(color.a,beta));
+
+
+        fragColor = vec4(v_colors.rgb, alpha);
+
+    }
+)" ;
+
+void RendererImpl::initFontData()
+{
+
+    const char *filename = "fonts/Vera.ttf";
+    const char * cache = " !\"#$%&'()*+,-./0123456789:;<=>?"
+                         "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
+                         "`abcdefghijklmnopqrstuvwxyz{|}~";
+
+    font_data_.atlas_ = ftgl::texture_atlas_new( 512, 512, 1 );
+    font_data_.font_ = ftgl::texture_font_new_from_file( font_data_.atlas_, 72, "/usr/share/fonts/truetype/roboto/hinted/Roboto-Light.ttf" );
+    font_data_.font_->rendermode = ftgl::RENDER_SIGNED_DISTANCE_FIELD;
+
+    ftgl::texture_font_load_glyphs( font_data_.font_, cache );
+
+    glGenTextures( 1, &font_data_.texture_id_ );
+    glBindTexture( GL_TEXTURE_2D, font_data_.texture_id_ );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RED, font_data_.atlas_->width, font_data_.atlas_->height, 0, GL_RED, GL_UNSIGNED_BYTE, font_data_.atlas_->data );
+
+    OpenGLShader::Ptr fs(new OpenGLShader(OpenGLShader::Fragment)) ;
+    fs->compileString(sdf_text_shader_fs, "sdf_texture_fs") ;
+
+    OpenGLShader::Ptr vs(new OpenGLShader(OpenGLShader::Vertex)) ;
+    vs->compileString(sdf_text_shader_vs, "sdf_texture_vs") ;
+
+    text_prog_.reset(new OpenGLShaderProgram) ;
+    text_prog_->addShader(vs);
+    text_prog_->addShader(fs);
+
+    const GLchar* feedbackVaryings[] = { "v_position" };
+    glTransformFeedbackVaryings(text_prog_->handle(), 1, feedbackVaryings, GL_INTERLEAVED_ATTRIBS);
+
+    text_prog_->link() ;
+
 }
 
 

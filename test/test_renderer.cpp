@@ -66,6 +66,10 @@ public:
     }
 
     void onMouseMoved(double xpos, double ypos) override {
+        ostringstream s ;
+        s << xpos << ',' << ypos ;
+        text_ = s.str() ;
+
         trackball_.setClickPoint(xpos, ypos) ;
     }
 
@@ -77,8 +81,10 @@ public:
     void onRender() {
         trackball_.update() ;
         rdr_.render(camera_, Renderer::RENDER_SMOOTH) ;
+        rdr_.renderText(text_, 0.5, 0.5) ;
     }
 
+    string text_ ;
     Renderer rdr_ ;
     ScenePtr scene_ ;
     TrackBall trackball_ ;

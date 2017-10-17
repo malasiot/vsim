@@ -37,8 +37,16 @@ set(RENDERER_FILES
     ${SRC_FOLDER}/renderer/renderer_impl.cpp
     ${SRC_FOLDER}/renderer/tools.cpp
 
+    ${SRC_FOLDER}/renderer/ftgl/vector.c
+    ${SRC_FOLDER}/renderer/ftgl/texture-font.c
+    ${SRC_FOLDER}/renderer/ftgl/texture-atlas.c
+    ${SRC_FOLDER}/renderer/ftgl/edtaa3func.c
+    ${SRC_FOLDER}/renderer/ftgl/distance-field.c
+    ${SRC_FOLDER}/renderer/ftgl/platform.c
+    ${SRC_FOLDER}/renderer/ftgl/utf8-utils.c
+
     ${CMAKE_BINARY_DIR}/vsim_shaders_library.cpp
 )
 
 add_library(vsim_renderer ${RENDERER_FILES})
-target_link_libraries(vsim_renderer vsim_util ${ASSIMP_LIBRARIES} ${OPENGL_LIBRARIES} ${GLFW3_LIBRARY} ${GLEW_LIBRARIES} ${FREEIMAGE_LIBRARIES})
+target_link_libraries(vsim_renderer vsim_util ${ASSIMP_LIBRARIES} ${OPENGL_LIBRARIES} ${GLFW3_LIBRARY} ${GLEW_LIBRARIES} ${FREEIMAGE_LIBRARIES} ${FREETYPE_LIBRARIES})

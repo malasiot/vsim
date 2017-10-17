@@ -28,10 +28,11 @@ public:
     // render scene
     void render(const Camera &cam, RenderMode mode) ;
 
+    void renderText(const std::string &text, float x, float y) ;
+
   //  cv::Mat getColor(bool alpha = true);
   //  cv::Mat getColor(cv::Mat &bg, float alpha);
   //  cv::Mat getDepth();
-
 
 private:
 
