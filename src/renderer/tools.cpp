@@ -4,7 +4,7 @@
 
 using namespace std ;
 using namespace Eigen ;
-using namespace vsim::renderer ;
+using namespace vsim ;
 
 static float polygon_area(const vector<Vector2f> &contour)
 {
@@ -234,7 +234,7 @@ void flatten_mesh(const Mesh &mesh, std::vector<Vector3f> &vertices, std::vector
             }
         }
 
-        for( uint t=0 ; t<MAX_TEXTURES ; t++ ) {
+        for( uint t=0 ; t<MAX_MESH_TEXTURES ; t++ ) {
             if ( !mesh.tex_coords_[t].empty() ) {
                 if ( !mesh.tex_coord_indices_[t].empty() ) {
                     uint32_t tidx = mesh.tex_coord_indices_[t][v] ;

@@ -1,4 +1,10 @@
-#include <vsim/renderer/scene.hpp>
+
+#include <vsim/env/mesh.hpp>
+#include <vsim/env/material.hpp>
+#include <vsim/env/light.hpp>
+#include <vsim/env/node.hpp>
+#include <vsim/env/geometry.hpp>
+
 #include <vsim/util/filesystem.hpp>
 
 #include "scene_loader.hpp"
@@ -11,8 +17,9 @@
 
 using namespace std ;
 using namespace Eigen ;
-using namespace vsim::renderer ;
-using namespace vsim::util ;
+
+using namespace vsim ;
+
 
 static Vector4f color4_to_float4(const aiColor4D &c) {
     return Vector4f(c.r, c.g, c.b, c.a) ;
@@ -75,7 +82,7 @@ static void importMaterial(Material &data, const struct aiMaterial *mtl, const s
     }
 
     string model_dir, model_base, model_ext ;
-    split_path(model_path, model_dir, model_base, model_ext) ;
+    util::split_path(model_path, model_dir, model_base, model_ext) ;
 
     aiString tex_path ;
     aiTextureMapping tmap ;
@@ -92,7 +99,7 @@ static void importMaterial(Material &data, const struct aiMaterial *mtl, const s
 }
 
 
-static bool importMaterials(ScenePtr &scene, const string &mpath, const aiScene *sc, map<const aiMaterial *, MaterialPtr> &material_map) {
+static bool importMaterials(ModelPtr &scene, const string &mpath, const aiScene *sc, map<const aiMaterial *, MaterialPtr> &material_map) {
     for( uint m=0 ; m<sc->mNumMaterials ; m++ ) {
         const aiMaterial *material = sc->mMaterials[m] ;
         MaterialPtr smat(new Material) ;
@@ -104,7 +111,7 @@ static bool importMaterials(ScenePtr &scene, const string &mpath, const aiScene 
     return true ;
 }
 
-static bool importMeshes(ScenePtr &scene, const aiScene *sc, map<const aiMesh *, MeshPtr> &mesh_map) {
+static bool importMeshes(ModelPtr &scene, const aiScene *sc, map<const aiMesh *, MeshPtr> &mesh_map) {
 
     for( uint m=0 ; m<sc->mNumMeshes ; m++ ) {
         const aiMesh *mesh = sc->mMeshes[m] ;
@@ -142,7 +149,7 @@ static bool importMeshes(ScenePtr &scene, const aiScene *sc, map<const aiMesh *,
                 smesh->colors_[i] = Vector3f(mesh->mColors[0][i].r, mesh->mColors[0][i].g, mesh->mColors[0][i].b) ;
         }
 
-        for( uint t=0 ; t<MAX_TEXTURES ; t++ ) {
+        for( uint t=0 ; t<MAX_MESH_TEXTURES ; t++ ) {
             uint n = mesh->mNumVertices ;
             if ( mesh->HasTextureCoords(t) ) {
                 smesh->tex_coords_[t].resize(n) ;
@@ -170,7 +177,7 @@ static bool importMeshes(ScenePtr &scene, const aiScene *sc, map<const aiMesh *,
     return true ;
 }
 
-static bool importLights(ScenePtr &scene, const aiScene *sc) {
+static bool importLights(ModelPtr &scene, const aiScene *sc) {
     for( uint m=0 ; m<sc->mNumLights ; m++ ) {
         const aiLight *light = sc->mLights[m] ;
         aiNode *lnode = sc->mRootNode->FindNode(light->mName) ;
@@ -252,7 +259,7 @@ static bool importLights(ScenePtr &scene, const aiScene *sc) {
     return true ;
 }
 
-static bool importNodes(ScenePtr &scene, NodePtr &pnode, const struct aiScene *sc, const struct aiNode* nd,
+static bool importNodes(ModelPtr &scene, NodePtr &pnode, const struct aiScene *sc, const struct aiNode* nd,
                         const map<const aiMesh *, MeshPtr> &meshes,
                         const map<const aiMaterial *, MaterialPtr> &materials)
 {
@@ -312,42 +319,41 @@ static bool importNodes(ScenePtr &scene, NodePtr &pnode, const struct aiScene *s
     return true ;
 }
 
-static ScenePtr importAssimp(const aiScene *sc, const std::string &fname) {
+static ModelPtr importAssimp(const aiScene *sc, const std::string &fname) {
 
     map<const aiMesh *, MeshPtr> meshes ;
     map<const aiMaterial *, MaterialPtr> materials ;
 
-    ScenePtr res(new Scene) ;
-    if ( !importMeshes(res, sc, meshes) ) return ScenePtr() ;
-    if ( !importMaterials(res, fname, sc, materials) ) return ScenePtr() ;
-    if ( !importLights(res, sc) ) return ScenePtr() ;
+    ModelPtr res(new Model) ;
+    if ( !importMeshes(res, sc, meshes) ) return ModelPtr() ;
+    if ( !importMaterials(res, fname, sc, materials) ) return ModelPtr() ;
+    if ( !importLights(res, sc) ) return ModelPtr() ;
 
     NodePtr root ;
-    if ( !importNodes(res, root, sc, sc->mRootNode, meshes, materials ) ) return ScenePtr() ;
+    if ( !importNodes(res, root, sc, sc->mRootNode, meshes, materials ) ) return ModelPtr() ;
 
     return res ;
 }
 
 
+namespace vsim {
 
-namespace vsim { namespace renderer {
-
-ScenePtr Scene::loadAssimp(const std::string &fname) {
+ModelPtr Model::loadAssimp(const std::string &fname) {
     const aiScene *sc = aiImportFile(fname.c_str(), aiProcessPreset_TargetRealtime_MaxQuality | aiProcess_FlipUVs | aiProcess_TransformUVCoords);
     if ( !sc ) {
-        throw SceneLoaderException("assimp", aiGetErrorString(), fname) ;
+        throw ModelLoaderException("assimp", aiGetErrorString(), fname) ;
     }
 
-    ScenePtr res = importAssimp(sc, fname) ;
+    ModelPtr res = importAssimp(sc, fname) ;
 
     aiReleaseImport(sc) ;
     return res ;
 }
 
-ScenePtr Scene::loadAssimp(const aiScene *sc, const std::string &fname) {
+ModelPtr Model::loadAssimp(const aiScene *sc, const std::string &fname) {
     return importAssimp(sc, fname) ;
 }
 
 
-}
+
 }

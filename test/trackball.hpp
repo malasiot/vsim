@@ -1,10 +1,10 @@
 #ifndef __TRACKBALL_HPP__
 #define __TRACKBALL_HPP__
 
-#include <vsim/renderer/scene_fwd.hpp>
+#include <vsim/env/scene_fwd.hpp>
 #include <Eigen/Geometry>
 
-using vsim::renderer::Camera ;
+using vsim::Camera ;
 
 // adapted from https://github.com/rsmz/trackball/
 

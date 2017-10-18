@@ -6,34 +6,34 @@
 
 using namespace std ;
 
-namespace vsim { namespace renderer {
+namespace vsim {
 
-SceneLoaderRegistry::SceneLoaderRegistry() {
+ModelLoaderRegistry::ModelLoaderRegistry() {
     // put here all drivers
 }
 
-SceneLoaderPtr SceneLoader::findDriver(const std::string &name)
+ModelLoaderPtr ModelLoader::findDriver(const std::string &name)
 {
-    const vector<SceneLoaderPtr> &drivers = SceneLoaderRegistry::instance().driver_list_ ;
+    const vector<ModelLoaderPtr> &drivers = ModelLoaderRegistry::instance().driver_list_ ;
     for ( uint i=0 ; i<drivers.size() ; i++ )
         if ( drivers[i]->canLoad(name) ) return drivers[i] ;
 
-    return SceneLoaderPtr() ;
+    return ModelLoaderPtr() ;
 }
 
-SceneLoaderPtr SceneLoader::findByFileName(const std::string &fname)
+ModelLoaderPtr ModelLoader::findByFileName(const std::string &fname)
 {
     string dir, base, fext ;
     util::split_path(fname, dir, base, fext);
 
-    if ( fext.empty() ) return SceneLoaderPtr() ;
+    if ( fext.empty() ) return ModelLoaderPtr() ;
 
     util::toLower(fext) ;
 
-    const vector<SceneLoaderPtr> &drivers = SceneLoaderRegistry::instance().driver_list_ ;
+    const vector<ModelLoaderPtr> &drivers = ModelLoaderRegistry::instance().driver_list_ ;
 
     for ( uint i=0 ; i<drivers.size() ; i++ ) {
-        SceneLoaderPtr d = drivers[i] ;
+        ModelLoaderPtr d = drivers[i] ;
 
         string extensions = d->getExtensions() ;
 
@@ -41,9 +41,8 @@ SceneLoaderPtr SceneLoader::findByFileName(const std::string &fname)
         if ( std::find(tokens.begin(), tokens.end(), fext) != tokens.end() ) return d ;
     }
 
-    return SceneLoaderPtr() ;
+    return ModelLoaderPtr() ;
 }
 
 
-} // namespace renderer
 } // namespace vsim

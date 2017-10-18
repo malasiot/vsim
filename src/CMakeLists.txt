@@ -6,9 +6,6 @@ set(UTIL_FILES
     ${SRC_FOLDER}/util/format.cpp
 )
 
-add_library(vsim_util ${UTIL_FILES})
-target_link_libraries(vsim_util)
-
 SET(OGL_SHADERS
     ${SRC_FOLDER}/renderer/shaders/skinning.vs
     ${SRC_FOLDER}/renderer/shaders/rigid.vs
@@ -18,8 +15,8 @@ SET(OGL_SHADERS
     ${SRC_FOLDER}/renderer/shaders/textured.fs
 )
 
-add_executable(glsl2src ${SRC_FOLDER}/tools/glsl2src.cpp)
-target_link_libraries(glsl2src vsim_util)
+add_executable(glsl2src ${SRC_FOLDER}/tools/glsl2src.cpp ${UTIL_FILES})
+target_link_libraries(glsl2src)
 
 add_custom_command(
     OUTPUT ${CMAKE_BINARY_DIR}/vsim_shaders_library.cpp
@@ -27,13 +24,10 @@ add_custom_command(
     DEPENDS ${OGL_SHADERS} glsl2src
 )
 
-
 set(RENDERER_FILES
     ${SRC_FOLDER}/renderer/ogl_shaders.cpp
     ${SRC_FOLDER}/renderer/renderer.cpp
-    ${SRC_FOLDER}/renderer/scene.cpp
-    ${SRC_FOLDER}/renderer/scene_loader.cpp
-    ${SRC_FOLDER}/renderer/assimp_loader.cpp
+
     ${SRC_FOLDER}/renderer/renderer_impl.cpp
     ${SRC_FOLDER}/renderer/tools.cpp
 
@@ -48,5 +42,25 @@ set(RENDERER_FILES
     ${CMAKE_BINARY_DIR}/vsim_shaders_library.cpp
 )
 
-add_library(vsim_renderer ${RENDERER_FILES})
-target_link_libraries(vsim_renderer vsim_util ${ASSIMP_LIBRARIES} ${OPENGL_LIBRARIES} ${GLFW3_LIBRARY} ${GLEW_LIBRARIES} ${FREEIMAGE_LIBRARIES} ${FREETYPE_LIBRARIES})
+set(ENV_FILES
+    ${SRC_FOLDER}/env/model.cpp
+    ${SRC_FOLDER}/env/model_loader.cpp
+    ${SRC_FOLDER}/env/assimp_loader.cpp
+    ${SRC_FOLDER}/env/mesh.cpp
+    ${SRC_FOLDER}/env/camera.cpp
+    ${SRC_FOLDER}/env/xml_loader.cpp
+
+    ${INCLUDE_FOLDER}/env/scene.hpp
+    ${INCLUDE_FOLDER}/env/model.hpp
+    ${INCLUDE_FOLDER}/env/node.hpp
+    ${INCLUDE_FOLDER}/env/camera.hpp
+    ${INCLUDE_FOLDER}/env/mesh.hpp
+    ${INCLUDE_FOLDER}/env/geometry.hpp
+    ${INCLUDE_FOLDER}/env/material.hpp
+    ${INCLUDE_FOLDER}/env/light.hpp
+    ${INCLUDE_FOLDER}/env/body.hpp
+    ${INCLUDE_FOLDER}/env/environment.hpp
+)
+
+add_library(vsim ${UTIL_FILES} ${RENDERER_FILES} ${ENV_FILES})
+target_link_libraries(vsim ${OPENGL_LIBRARIES} ${ASSIMP_LIBRARY} ${GLFW3_LIBRARY} ${GLEW_LIBRARIES} ${FREEIMAGE_LIBRARIES} ${FREETYPE_LIBRARIES})

@@ -3,7 +3,10 @@
 
 #include <memory>
 
-namespace vsim { namespace renderer {
+namespace vsim {
+
+class Model ;
+typedef std::shared_ptr<Model> ModelPtr ;
 
 struct Material ;
 typedef std::shared_ptr<Material> MaterialPtr ;
@@ -35,6 +38,6 @@ typedef std::shared_ptr<Light> LightPtr ;
 class Scene ;
 typedef std::shared_ptr<Scene> ScenePtr ;
 
-}}
+}
 
 #endif

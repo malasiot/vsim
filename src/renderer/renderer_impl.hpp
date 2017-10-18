@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include <vsim/renderer/scene.hpp>
+#include <vsim/env/scene.hpp>
 #include <vsim/renderer/ogl_shaders.hpp>
 #include <vsim/renderer/renderer.hpp>
 
@@ -17,7 +17,7 @@ namespace vsim { namespace renderer {
 class RendererImpl {
 public:
 
-    RendererImpl(const ScenePtr &scene): scene_(scene) {}
+    RendererImpl(const ModelPtr &scene): scene_(scene) {}
     ~RendererImpl() ;
 
     // initialize renderer
@@ -79,7 +79,7 @@ private:
 
     std::map<MeshPtr, MeshData> buffers_ ;
     std::map<std::string, GLuint> textures_ ;
-    ScenePtr scene_ ;
+    ModelPtr scene_ ;
     Eigen::Matrix4f perspective_, proj_ ;
     GLuint query_ ;
     Eigen::Vector4f bg_clr_= { 0, 0, 0, 1 } ;

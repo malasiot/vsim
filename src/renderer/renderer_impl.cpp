@@ -10,10 +10,14 @@
 #include <memory>
 
 #include <vsim/util/format.hpp>
+#include <vsim/env/material.hpp>
+#include <vsim/env/node.hpp>
+#include <vsim/env/mesh.hpp>
+#include <vsim/env/geometry.hpp>
+
 #include <FreeImage.h>
 
 #include "ftgl/texture-font.h"
-
 
 using namespace std ;
 using namespace Eigen ;

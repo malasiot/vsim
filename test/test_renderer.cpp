@@ -1,18 +1,26 @@
 #include <vsim/renderer/renderer.hpp>
+#include <vsim/env/camera.hpp>
+#include <vsim/env/light.hpp>
+#include <vsim/env/mesh.hpp>
+#include <vsim/env/material.hpp>
+#include <vsim/env/geometry.hpp>
+#include <vsim/env/node.hpp>
+#include <vsim/env/environment.hpp>
+
 #include "glfw_window.hpp"
 #include "trackball.hpp"
 
 #include <iostream>
 
 using namespace vsim::renderer ;
-using namespace vsim::util ;
+using namespace vsim ;
 using namespace std ;
 using namespace Eigen ;
 
 class glfwGUI: public glfwRenderWindow {
 public:
 
-    glfwGUI(ScenePtr scene): glfwRenderWindow(), rdr_(scene), camera_(1.0, 50*M_PI/180, 0.01, 1000) {
+    glfwGUI(ModelPtr scene): glfwRenderWindow(), rdr_(scene), camera_(1.0, 50*M_PI/180, 0.01, 1000) {
     }
 
     void onInit() {
@@ -86,15 +94,17 @@ public:
 
     string text_ ;
     Renderer rdr_ ;
-    ScenePtr scene_ ;
+
     TrackBall trackball_ ;
     PerspectiveCamera camera_ ;
 };
 
 int main(int argc, char *argv[]) {
 
+    Environment env ;
+    env.loadXML("/home/malasiot/tmp/env.xml") ;
 
-    ScenePtr scene = Scene::load("/home/malasiot/Downloads/greek_column.obj") ;
+    ModelPtr scene = Model::load("/home/malasiot/Downloads/greek_column.obj") ;
      //ScenePtr scene = Scene::load("/home/malasiot/Downloads/cube.obj") ;
     scene->addLight(LightPtr(new DirectionalLight(Vector3f(0.5, 0.5, 1), Vector3f(1, 1, 1)))) ;
 

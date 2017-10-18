@@ -1,11 +1,11 @@
 #include "trackball.hpp"
 
-#include <vsim/renderer/scene.hpp>
+#include <vsim/env/scene.hpp>
 #include <Eigen/Geometry>
 
 using namespace std ;
 using namespace Eigen ;
-using namespace vsim::renderer ;
+using namespace vsim ;
 
 Eigen::Vector3f TrackBall::X(1.f, 0.f, 0.f);
 Eigen::Vector3f TrackBall::Y(0.f, 1.f, 0.f);
