@@ -276,7 +276,7 @@ static bool importNodes(ModelPtr &scene, NodePtr &pnode, const struct aiScene *s
             m.c1, m.c2, m.c3, m.c4,
             m.d1, m.d2, m.d3, m.d4 ;
 
-    snode->mat_ = tf.eval() ;
+    snode->pose_.mat_ = tf.eval() ;
     snode->name_ = nd->mName.C_Str();
 
     /* draw all meshes assigned to this node */

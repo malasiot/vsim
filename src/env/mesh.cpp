@@ -330,4 +330,8 @@ MeshPtr Mesh::createWireCylinder(float radius, float height, size_t slices, size
     return m ;
 }
 
+MeshPtr Mesh::createSolidSphere(float radius, size_t slices, size_t stacks) {
+    return MeshPtr() ;
+}
+
 }

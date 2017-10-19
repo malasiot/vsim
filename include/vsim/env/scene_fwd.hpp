@@ -38,6 +38,10 @@ typedef std::shared_ptr<Light> LightPtr ;
 class Scene ;
 typedef std::shared_ptr<Scene> ScenePtr ;
 
+struct Model ;
+typedef std::shared_ptr<Model> ModelPtr ;
+
+
 }
 
 #endif

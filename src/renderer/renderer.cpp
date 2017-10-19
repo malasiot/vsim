@@ -34,7 +34,7 @@ void Renderer::renderText(const string &text, float x, float y)
 }
 
 
-Renderer::Renderer(const ModelPtr &scene): impl_(new RendererImpl(scene)) {
+Renderer::Renderer(const ScenePtr &scene): impl_(new RendererImpl(scene)) {
 
 }
 

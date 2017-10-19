@@ -30,7 +30,7 @@ public:
 
     std::vector<BodyPtr> bodies_ ;
 
-    std::vector<ModelPtr> models_ ;           // root nodes of the hierarchy
+    std::vector<ModelPtr> models_ ;           // shared models
     std::vector<MaterialPtr> materials_ ;   // shared materials
     std::vector<MeshPtr> meshes_ ;          // shared meshes
     std::vector<CameraPtr> cameras_ ;       // list of cameras

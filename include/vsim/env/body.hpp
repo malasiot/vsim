@@ -10,6 +10,7 @@
 #include <Eigen/Core>
 
 #include <vsim/env/model.hpp>
+#include <vsim/env/pose.hpp>
 
 namespace vsim {
 
@@ -21,11 +22,11 @@ typedef std::shared_ptr<Body> BodyPtr ;
 class Body {
 public:
 
-    Body(): pose_(Eigen::Matrix4f::Identity()) {}
+    Body() = default ;
 
 public:
 
-    Eigen::Matrix4f pose_ ;
+    Pose pose_ ;
     ModelPtr model_ ;
 };
 

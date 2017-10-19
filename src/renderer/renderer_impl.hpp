@@ -17,7 +17,7 @@ namespace vsim { namespace renderer {
 class RendererImpl {
 public:
 
-    RendererImpl(const ModelPtr &scene): scene_(scene) {}
+    RendererImpl(const ScenePtr &scene): scene_(scene) {}
     ~RendererImpl() ;
 
     // initialize renderer
@@ -60,26 +60,37 @@ public:
     };
 
 
+    void makeVertexBuffers(const ScenePtr &scene) ;
+    void makeVertexBuffers(const ModelPtr &model) ;
+
     void clear(MeshData &data);
     void initBuffersForMesh(MeshData &data, Mesh &mesh) ;
 
     void render(const Camera &cam, Renderer::RenderMode mode) ;
     void render(const NodePtr &node, const Camera &cam, const Eigen::Matrix4f &mat, Renderer::RenderMode mode) ;
     void render(const GeometryPtr &geom, const Camera &cam, const Eigen::Matrix4f &mat, Renderer::RenderMode mode) ;
+    void render(const ModelPtr &model, const Camera &cam, const Eigen::Matrix4f &tf, Renderer::RenderMode mode);
+
     void setModelTransform(const Eigen::Matrix4f &tf);
     void setMaterial(const MaterialPtr &material) ;
     void setProgram(Renderer::RenderMode rm) ;
-    void setLights() ;
-    void initTextures() ;
+
+    void setLights(const ScenePtr &scene) ;
+    void setLights(const ModelPtr &model) ;
+    void setLights(const std::vector<LightPtr> &lights) ;
+    void initTextures(const ScenePtr &scene) ;
+    void initTextures(const ModelPtr &scene) ;
+    void initTexture(const MaterialPtr &mat) ;
     void renderText(const std::string &text, float x, float y) ;
     void initFontData() ;
+
 private:
 
     OpenGLShaderLibrary shaders_ ;
 
     std::map<MeshPtr, MeshData> buffers_ ;
     std::map<std::string, GLuint> textures_ ;
-    ModelPtr scene_ ;
+    ScenePtr scene_ ;
     Eigen::Matrix4f perspective_, proj_ ;
     GLuint query_ ;
     Eigen::Vector4f bg_clr_= { 0, 0, 0, 1 } ;
@@ -88,6 +99,7 @@ private:
     OpenGLShaderProgram::Ptr prog_ ;
     OpenGLShaderProgram::Ptr text_prog_ ;
     FontData font_data_ ;
+    uint light_index_ = 0 ;
 } ;
 
 

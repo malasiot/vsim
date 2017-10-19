@@ -20,7 +20,7 @@ using namespace Eigen ;
 class glfwGUI: public glfwRenderWindow {
 public:
 
-    glfwGUI(ModelPtr scene): glfwRenderWindow(), rdr_(scene), camera_(1.0, 50*M_PI/180, 0.01, 1000) {
+    glfwGUI(ScenePtr scene): glfwRenderWindow(), rdr_(scene), camera_(1.0, 50*M_PI/180, 0.01, 1000) {
     }
 
     void onInit() {
@@ -104,25 +104,33 @@ int main(int argc, char *argv[]) {
     Environment env ;
     env.loadXML("/home/malasiot/tmp/env.xml") ;
 
-    ModelPtr scene = Model::load("/home/malasiot/Downloads/greek_column.obj") ;
+    env.scene_->lights_.push_back(LightPtr(new DirectionalLight(Vector3f(0.5, 0.5, 1), Vector3f(1, 1, 1)))) ;
+
+    ModelPtr model = Model::load("/home/malasiot/Downloads/greek_column.obj") ;
      //ScenePtr scene = Scene::load("/home/malasiot/Downloads/cube.obj") ;
-    scene->addLight(LightPtr(new DirectionalLight(Vector3f(0.5, 0.5, 1), Vector3f(1, 1, 1)))) ;
+    model->addLight(LightPtr(new DirectionalLight(Vector3f(0.5, 0.5, 1), Vector3f(1, 1, 1)))) ;
 
     MeshPtr cube = Mesh::createWireCylinder(50, 100, 10, 10) ;
     MaterialPtr cube_mat(new Material) ;
     cube_mat->type_ = Material::CONSTANT ;
     cube_mat->diffuse_.set<Vector4f>(1, 0, 0, 1) ;
-    scene->addMaterial(cube_mat) ;
+    model->addMaterial(cube_mat) ;
     GeometryPtr cube_geom(new Geometry) ;
     cube_geom->material_ = cube_mat ;
     cube_geom->mesh_ = cube ;
     NodePtr cube_node(new Node) ;
     cube_node->geometries_.push_back(cube_geom) ;
-    cube_node->mat_.setIdentity() ;
-    scene->addMesh(cube) ;
-    scene->addNode(cube_node) ;
+    //cube_node->pose_.mat_.setIdentity() ;
+    model->addMesh(cube) ;
+    model->addNode(cube_node) ;
 
-    glfwGUI gui(scene) ;
+    BodyPtr body(new Body) ;
+    ScenePtr scene(new Scene) ;
+    scene->models_.push_back(model) ;
+    scene->bodies_.push_back(body) ;
+    body->model_ = model ;
+
+    glfwGUI gui(env.scene_) ;
 
     gui.run(500, 500) ;
 

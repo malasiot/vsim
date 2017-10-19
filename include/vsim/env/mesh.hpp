@@ -36,8 +36,8 @@ public:
     static MeshPtr createWireCube(float sz) ;
     static MeshPtr createSolidCube(float sz) ;
 
-    void createWireSphere(float radius, size_t slices, size_t stacks) ;
-    void createSolidSphere(float radius, size_t slices, size_t stacks) ;
+    static MeshPtr createWireSphere(float radius, size_t slices, size_t stacks) ;
+    static MeshPtr createSolidSphere(float radius, size_t slices, size_t stacks) ;
 
     // the base of the cone is on (0, 0, 0) aligned with the z-axis and pointing towards positive z
 

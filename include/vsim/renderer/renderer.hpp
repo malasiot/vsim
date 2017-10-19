@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include <vsim/env/model.hpp>
+#include <vsim/env/scene.hpp>
 
 namespace vsim { namespace renderer {
 
@@ -16,7 +16,7 @@ public:
                         RENDER_SMOOTH, // phong
                         RENDER_GOURAUD } ;
 
-    Renderer(const ModelPtr &scene) ;
+    Renderer(const ScenePtr &scene) ;
     ~Renderer() ;
 
     // initialize renderer

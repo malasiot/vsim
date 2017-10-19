@@ -47,6 +47,7 @@ set(ENV_FILES
     ${SRC_FOLDER}/env/model_loader.cpp
     ${SRC_FOLDER}/env/assimp_loader.cpp
     ${SRC_FOLDER}/env/mesh.cpp
+    ${SRC_FOLDER}/env/pose.cpp
     ${SRC_FOLDER}/env/camera.cpp
     ${SRC_FOLDER}/env/xml_loader.cpp
 
@@ -59,6 +60,8 @@ set(ENV_FILES
     ${INCLUDE_FOLDER}/env/material.hpp
     ${INCLUDE_FOLDER}/env/light.hpp
     ${INCLUDE_FOLDER}/env/body.hpp
+    ${INCLUDE_FOLDER}/env/pose.hpp
+    ${INCLUDE_FOLDER}/env/frame.hpp
     ${INCLUDE_FOLDER}/env/environment.hpp
 )
 

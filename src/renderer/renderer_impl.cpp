@@ -27,6 +27,31 @@ extern vector<vsim::renderer::OpenGLShaderLibrary::ProgramConfig> vsim_opengl_sh
 
 namespace vsim { namespace renderer {
 
+
+void RendererImpl::makeVertexBuffers(const ScenePtr &scene) {
+
+    for( MeshPtr mesh: scene->meshes_ ) {
+        MeshData data ;
+        initBuffersForMesh(data, *mesh);
+        buffers_[mesh] = data ;
+    }
+
+    for( ModelPtr m: scene->models_ )
+        makeVertexBuffers(m);
+}
+
+void RendererImpl::makeVertexBuffers(const ModelPtr &model) {
+    for( MeshPtr mesh: model->meshes_ ) {
+        MeshData data ;
+        initBuffersForMesh(data, *mesh);
+        buffers_[mesh] = data ;
+    }
+
+    for( ModelPtr child: model->children_ )
+        makeVertexBuffers(child) ;
+
+}
+
 bool RendererImpl::init() {
 
     // this is needed for non core profiles or instead use gl3w
@@ -51,17 +76,11 @@ bool RendererImpl::init() {
 
     // create vertex buffers
 
-    for( uint m=0 ; m<scene_->meshes_.size() ; m++ )
-    {
-        MeshData data ;
-        MeshPtr mesh = scene_->meshes_[m] ;
-        initBuffersForMesh(data, *scene_->meshes_[m]);
-        buffers_[mesh] = data ;
-    }
+    makeVertexBuffers(scene_) ;
 
     // load textures
 
-    initTextures() ;
+    initTextures(scene_) ;
 
     initFontData() ;
 
@@ -166,16 +185,33 @@ void RendererImpl::render(const Camera &cam, Renderer::RenderMode mode) {
 
     proj_ = cam.getViewMatrix() ;
 
-    // render node hierarchy
+    // render model hierarchy
 
-    for( uint i=0 ; i<scene_->nodes_.size() ; i++ ) {
-        const NodePtr &n = scene_->nodes_[i] ;
-        render(n, cam, Matrix4f::Identity(), mode) ;
+    for( uint i=0 ; i<scene_->bodies_.size() ; i++ ) {
+        const BodyPtr &b = scene_->bodies_[i] ;
+        render(b->model_, cam, b->pose_.absolute(), mode) ;
+
+    }
+}
+
+void RendererImpl::render(const ModelPtr &model, const Camera &cam, const Matrix4f &tf, Renderer::RenderMode mode) {
+
+    Matrix4f mat = model->pose_.absolute(),
+            tr = tf * mat ; // accumulate transform
+
+    for( uint i=0 ; i<model->nodes_.size() ; i++ ) {
+        const NodePtr &n = model->nodes_[i] ;
+        render(n, cam, tr, mode) ;
+    }
+
+    for( uint i=0 ; i<model->children_.size() ; i++ ) {
+        const ModelPtr &m = model->children_[i] ;
+        render(m, cam, tr, mode) ;
     }
 }
 
 void RendererImpl::render(const NodePtr &node, const Camera &cam, const Matrix4f &tf, Renderer::RenderMode mode) {
-    Matrix4f mat = node->mat_,
+    Matrix4f mat = node->pose_.absolute(),
             tr = tf * mat ; // accumulate transform
 
     for( uint i=0 ; i<node->geometries_.size() ; i++ ) {
@@ -251,20 +287,43 @@ void RendererImpl::setMaterial(const MaterialPtr &material)
         prog_->setUniform("g_material.shininess", (float)1.0) ;
 }
 
+
 #define MAX_LIGHTS 10
 
-void RendererImpl::setLights()
-{
-    for( uint i=0 ; i< MAX_LIGHTS ; i++  ) {
+void RendererImpl::setLights(const ScenePtr &scene) {
 
+    light_index_ = 0 ;
+
+    setLights(scene->lights_) ;
+
+    for( ModelPtr m: scene->models_ )
+        setLights(m) ;
+
+    for(uint i=light_index_ ; i<MAX_LIGHTS ; i++ ) {
         string vname = util::format("g_light_source[%]", i) ;
+        prog_->setUniform(vname + ".light_type", -1) ;
+        continue ;
+    }
+}
 
-        if ( i >= scene_->lights_.size() ) {
-            prog_->setUniform(vname + ".light_type", -1) ;
-            continue ;
-        }
+void RendererImpl::setLights(const ModelPtr &model) {
+    setLights(model->lights_) ;
 
-        const LightPtr &light = scene_->lights_[i] ;
+    for( ModelPtr m: model->children_ )
+        setLights(m) ;
+}
+
+
+void RendererImpl::setLights(const vector<LightPtr> &lights)
+{
+
+    for( uint i=0 ; i< lights.size() ; i++  ) {
+
+        if ( light_index_ >= MAX_LIGHTS ) return ;
+
+        string vname = util::format("g_light_source[%]", light_index_++) ;
+
+        const LightPtr &light = lights[i] ;
 
         if ( light->type_ == Light::AMBIENT ) {
             const AmbientLight &alight = (const AmbientLight &)*light ;
@@ -306,64 +365,73 @@ void RendererImpl::setLights()
 
 }
 
-void RendererImpl::initTextures()
+void RendererImpl::initTextures(const ScenePtr &scene) {
+    for( MaterialPtr mat: scene->materials_)
+        initTexture(mat) ;
+
+    for( ModelPtr model: scene->models_)
+        initTextures(model) ;
+}
+
+void RendererImpl::initTextures(const ModelPtr &model) {
+    for( MaterialPtr mat: model->materials_)
+        initTexture(mat) ;
+}
+
+void RendererImpl::initTexture(const MaterialPtr &m)
 {
-    for( uint i=0 ; i<scene_->materials_.size() ; i++ ) {
 
-        MaterialPtr &m = scene_->materials_[i] ;
+    if ( m->texture_.valid() ) {
+        Sampler2D &texture = m->texture_.get<Sampler2D>() ;
 
-        if ( m->texture_.valid() ) {
-            Sampler2D &texture = m->texture_.get<Sampler2D>() ;
+        FIBITMAP* image = FreeImage_Load(
+                    FreeImage_GetFileType(texture.image_url_.c_str(), 0),
+                    texture.image_url_.c_str());
 
-            FIBITMAP* image = FreeImage_Load(
-                        FreeImage_GetFileType(texture.image_url_.c_str(), 0),
-                        texture.image_url_.c_str());
+        if ( image ) {
+            GLuint texture_id ;
+            glEnable(GL_TEXTURE_2D) ;
+            glActiveTexture(GL_TEXTURE0);
+            glGenTextures(1, &texture_id);
+            glBindTexture(GL_TEXTURE_2D, texture_id);
 
-            if ( image ) {
-                GLuint texture_id ;
-                glEnable(GL_TEXTURE_2D) ;
-                glActiveTexture(GL_TEXTURE0);
-                glGenTextures(1, &texture_id);
-                glBindTexture(GL_TEXTURE_2D, texture_id);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            // Set texture clamping method
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-                // Set texture clamping method
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+            glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
+            glPixelStorei( GL_UNPACK_ROW_LENGTH, 0 );
+            glPixelStorei( GL_UNPACK_SKIP_PIXELS, 0 );
+            glPixelStorei( GL_UNPACK_SKIP_ROWS, 0 );
 
-                glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
-                glPixelStorei( GL_UNPACK_ROW_LENGTH, 0 );
-                glPixelStorei( GL_UNPACK_SKIP_PIXELS, 0 );
-                glPixelStorei( GL_UNPACK_SKIP_ROWS, 0 );
+            int w = FreeImage_GetWidth(image);
+            int h = FreeImage_GetHeight(image);
 
-                int w = FreeImage_GetWidth(image);
-                int h = FreeImage_GetHeight(image);
+            FIBITMAP* im_rgba = FreeImage_ConvertTo32Bits(image);
 
-                FIBITMAP* im_rgba = FreeImage_ConvertTo32Bits(image);
+            FreeImage_Unload(image);
 
-                FreeImage_Unload(image);
+            glTexImage2D(GL_TEXTURE_2D,     // Type of texture
+                         0,                 // Pyramid level (for mip-mapping) - 0 is the top level
+                         GL_RGBA8,            // Internal colour format to convert to
+                         w,
+                         h,
+                         0,                 // Border width in pixels (can either be 1 or 0)
+                         GL_BGRA, // Input image format (i.e. GL_RGB, GL_RGBA, GL_BGR etc.)
+                         GL_UNSIGNED_BYTE,  // Image data type
+                         (void*)FreeImage_GetBits(im_rgba)
+                         );        // The actual image data itself
 
-                glTexImage2D(GL_TEXTURE_2D,     // Type of texture
-                             0,                 // Pyramid level (for mip-mapping) - 0 is the top level
-                             GL_RGBA8,            // Internal colour format to convert to
-                             w,
-                             h,
-                             0,                 // Border width in pixels (can either be 1 or 0)
-                             GL_BGRA, // Input image format (i.e. GL_RGB, GL_RGBA, GL_BGR etc.)
-                             GL_UNSIGNED_BYTE,  // Image data type
-                             (void*)FreeImage_GetBits(im_rgba)
-                             );        // The actual image data itself
+            glGenerateMipmap(GL_TEXTURE_2D);
 
-                glGenerateMipmap(GL_TEXTURE_2D);
+            textures_[texture.image_url_] = texture_id ;
 
-                textures_[texture.image_url_] = texture_id ;
-
-                FreeImage_Unload(im_rgba);
-            }
-
+            FreeImage_Unload(im_rgba);
         }
+
 
     }
 }
@@ -446,7 +514,7 @@ void RendererImpl::renderText(const string &text, float x, float y)
     GLint width  = v[2];
     GLint height = v[3];
 
-//    glViewport(0, 0, width, height);
+    //    glViewport(0, 0, width, height);
 
     projection.setIdentity() ;
     projection(0, 0) = 1.0/width ;
@@ -509,7 +577,7 @@ void RendererImpl::renderText(const string &text, float x, float y)
     glEnable( GL_TEXTURE_2D );
     glEnable( GL_BLEND );
     glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-/*
+    /*
     for( uint i=0 ; i<vertices.size() ; i++ ) {
         Vector4f p(vertices[i].x(), vertices[i].y(), vertices[i].z(), 1.0) ;
         Vector4f o = projection * view * model * p ;
@@ -545,85 +613,85 @@ void RendererImpl::renderText(const string &text, float x, float y)
 
     }
 
-     glDeleteVertexArrays(1, &vao) ;
+    glDeleteVertexArrays(1, &vao) ;
 
 
 }
 
 static const string sdf_text_shader_vs = R"(
-    #version 330
+                                         #version 330
 
-    layout (location = 0) in vec3 vertex;
-    layout (location = 1) in vec2 tex_coord;
-    layout (location = 2) in vec4 color;
+                                         layout (location = 0) in vec3 vertex;
+                                         layout (location = 1) in vec2 tex_coord;
+                                         layout (location = 2) in vec4 color;
 
-    uniform mat4 u_model;
-    uniform mat4 u_view;
-    uniform mat4 u_projection;
-    uniform vec4 u_color;
+                                         uniform mat4 u_model;
+                                         uniform mat4 u_view;
+                                         uniform mat4 u_projection;
+                                         uniform vec4 u_color;
 
-    out vec2 uvs ;
-    out vec4 v_colors ;
-    out vec4 v_position ;
+                                         out vec2 uvs ;
+                                         out vec4 v_colors ;
+                                         out vec4 v_position ;
 
-    void main(void)
-    {
-        uvs = tex_coord ;
-        v_colors = color * u_color;
-        v_position = u_projection*(u_view*(u_model*vec4(vertex,1.0)));
-        gl_Position = v_position ;
-    }
-)" ;
+                                         void main(void)
+                                         {
+                                         uvs = tex_coord ;
+                                         v_colors = color * u_color;
+                                         v_position = u_projection*(u_view*(u_model*vec4(vertex,1.0)));
+                                         gl_Position = v_position ;
+                                         }
+                                         )" ;
 
 static const string sdf_text_shader_fs = R"(
-    #version 330
-    uniform sampler2D u_texture;
+                                         #version 330
+                                         uniform sampler2D u_texture;
 
-    vec3 glyph_color    = vec3(1.0,1.0,1.0);
-    const float glyph_center   = 0.50;
-    vec3 outline_color  = vec3(0.0,0.0,0.0);
-    const float outline_center = 0.55;
-    vec3 glow_color     = vec3(1.0,1.0,1.0);
-    const float glow_center    = 1.25;
+                                         vec3 glyph_color    = vec3(1.0,1.0,1.0);
+                                         const float glyph_center   = 0.50;
+                                         vec3 outline_color  = vec3(0.0,0.0,0.0);
+                                         const float outline_center = 0.55;
+                                         vec3 glow_color     = vec3(1.0,1.0,1.0);
+                                         const float glow_center    = 1.25;
 
-    in vec2 uvs;
-    in vec4 v_colors ;
+                                         in vec2 uvs;
+                                         in vec4 v_colors ;
 
-    out vec4 fragColor;
+                                         out vec4 fragColor;
 
-    void main(void)
-    {
-        vec4  color = texture2D(u_texture, uvs);
-        float dist  = color.r;
-        float width = fwidth(dist);
-        float alpha = smoothstep(glyph_center-width, glyph_center+width, dist);
+                                         void main(void)
+                                         {
+                                         vec4  color = texture2D(u_texture, uvs);
+                                         float dist  = color.r;
+                                         float width = fwidth(dist);
+                                         float alpha = smoothstep(glyph_center-width, glyph_center+width, dist);
 
-        // Smooth
-        // fragColor = vec4(glyph_color, alpha);
-        //fragColor = vec4(1, 0, 1, 1) ;
-        // Outline
-        // float mu = smoothstep(outline_center-width, outline_center+width, dist);
-        // vec3 rgb = mix(outline_color, glyph_color, mu);
-        // fragColor = vec4(rgb, max(alpha,mu));
+                                         // Smooth
+                                         // fragColor = vec4(glyph_color, alpha);
+                                         //fragColor = vec4(1, 0, 1, 1) ;
+                                         // Outline
+                                         // float mu = smoothstep(outline_center-width, outline_center+width, dist);
+                                         // vec3 rgb = mix(outline_color, glyph_color, mu);
+                                         // fragColor = vec4(rgb, max(alpha,mu));
 
-        // Glow
-        //vec3 rgb = mix(glow_color, glyph_color, alpha);
-        //float mu = smoothstep(glyph_center, glow_center, sqrt(dist));
-        //gl_FragColor = vec4(rgb, max(alpha,mu));
+                                         // Glow
+                                         //vec3 rgb = mix(glow_color, glyph_color, alpha);
+                                         //float mu = smoothstep(glyph_center, glow_center, sqrt(dist));
+                                         //gl_FragColor = vec4(rgb, max(alpha,mu));
 
-        // Glow + outline
-        vec3 rgb = mix(glow_color, glyph_color, alpha);
-        float mu = smoothstep(glyph_center, glow_center, sqrt(dist));
-        color = vec4(rgb, max(alpha,mu));
-        float beta = smoothstep(outline_center-width, outline_center+width, dist);
-        rgb = mix(outline_color, color.rgb, beta);
-        fragColor = vec4(rgb, max(color.a,beta));
+                                         // Glow + outline
+                                         vec3 rgb = mix(glow_color, glyph_color, alpha);
+                                         float mu = smoothstep(glyph_center, glow_center, sqrt(dist));
+                                         color = vec4(rgb, max(alpha,mu));
+                                         float beta = smoothstep(outline_center-width, outline_center+width, dist);
+                                         rgb = mix(outline_color, color.rgb, beta);
+                                         fragColor = vec4(rgb, max(color.a,beta));
 
 
-        fragColor = vec4(v_colors.rgb, alpha);
+                                         fragColor = vec4(v_colors.rgb, alpha);
 
-    }
-)" ;
+                                         }
+                                         )" ;
 
 void RendererImpl::initFontData()
 {
@@ -667,6 +735,8 @@ void RendererImpl::initFontData()
 
 void RendererImpl::render(const GeometryPtr &geom, const Camera &cam, const Matrix4f &mat, Renderer::RenderMode mode)
 {
+    if ( !geom->mesh_ ) return ;
+
     MeshData &data = buffers_[geom->mesh_] ;
 
     if ( mode == Renderer::RENDER_FLAT )
@@ -685,7 +755,8 @@ void RendererImpl::render(const GeometryPtr &geom, const Camera &cam, const Matr
     if ( geom->material_) setMaterial(geom->material_) ;
     else setMaterial(default_material_) ;
 
-    setLights() ;
+    light_index_ = 0 ;
+    setLights(scene_) ;
 
 #if 0
     glBindVertexArray(data.vao_);

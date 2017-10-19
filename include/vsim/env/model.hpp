@@ -11,7 +11,7 @@
 #include <vsim/util/format.hpp>
 #include <vsim/env/scene_fwd.hpp>
 #include <vsim/env/indexed_container.hpp>
-
+#include <vsim/env/pose.hpp>
 #include <assimp/scene.h>
 
 namespace vsim {
@@ -47,7 +47,7 @@ public:
 
 public:
 
-    Eigen::Matrix4f mat_ ;
+    Pose pose_ ;
 
     std::vector<ModelPtr> children_ ;
     std::vector<NodePtr> nodes_ ;           // root nodes of the hierarchy
