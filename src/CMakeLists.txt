@@ -4,7 +4,11 @@ set(UTIL_FILES
     ${SRC_FOLDER}/util/xml_sax_parser.cpp
     ${SRC_FOLDER}/util/strings.cpp
     ${SRC_FOLDER}/util/format.cpp
+
+    ${SRC_FOLDER}/3rdparty/pugixml/pugixml.cpp
+    ${SRC_FOLDER}/3rdparty/pugixml/pugixml.hpp
 )
+
 
 SET(OGL_SHADERS
     ${SRC_FOLDER}/renderer/shaders/skinning.vs
@@ -62,6 +66,7 @@ set(ENV_FILES
     ${INCLUDE_FOLDER}/env/body.hpp
     ${INCLUDE_FOLDER}/env/pose.hpp
     ${INCLUDE_FOLDER}/env/frame.hpp
+    ${INCLUDE_FOLDER}/env/drawable.hpp
     ${INCLUDE_FOLDER}/env/environment.hpp
 )
 

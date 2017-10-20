@@ -21,10 +21,10 @@ public:
     std::string name_ ;
     Pose pose_ ;                 // transformation matrix to apply to child nodes and attached geometries
     std::vector<NodePtr> children_ ;       // child nodes
-    std::vector<GeometryPtr> geometries_ ; // meshes associated with this node
+    std::vector<DrawablePtr> drawables_ ; // meshes associated with this node
 
-    NodePtr parent_ ;                      // parent node
-    ModelPtr model_ ;
+    NodePtr parent_ ;
+
 };
 
 }

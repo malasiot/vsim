@@ -68,7 +68,7 @@ public:
 
     void render(const Camera &cam, Renderer::RenderMode mode) ;
     void render(const NodePtr &node, const Camera &cam, const Eigen::Matrix4f &mat, Renderer::RenderMode mode) ;
-    void render(const GeometryPtr &geom, const Camera &cam, const Eigen::Matrix4f &mat, Renderer::RenderMode mode) ;
+    void render(const DrawablePtr &geom, const Camera &cam, const Eigen::Matrix4f &mat, Renderer::RenderMode mode) ;
     void render(const ModelPtr &model, const Camera &cam, const Eigen::Matrix4f &tf, Renderer::RenderMode mode);
 
     void setModelTransform(const Eigen::Matrix4f &tf);
@@ -88,7 +88,7 @@ private:
 
     OpenGLShaderLibrary shaders_ ;
 
-    std::map<MeshPtr, MeshData> buffers_ ;
+    std::map<GeometryPtr, MeshData> buffers_ ;
     std::map<std::string, GLuint> textures_ ;
     ScenePtr scene_ ;
     Eigen::Matrix4f perspective_, proj_ ;

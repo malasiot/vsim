@@ -3,10 +3,13 @@
 #include <vsim/env/geometry.hpp>
 #include <vsim/env/node.hpp>
 #include <vsim/env/pose.hpp>
-#include <vsim/util/xml_sax_parser.hpp>
+#include <vsim/env/drawable.hpp>
+
 #include <vsim/util/format.hpp>
 #include <vsim/util/filesystem.hpp>
 #include <vsim/util/strings.hpp>
+
+#include <pugixml/pugixml.hpp>
 
 #include <fstream>
 #include <Eigen/Geometry>
@@ -17,8 +20,381 @@ using namespace std ;
 
 namespace vsim {
 
-using util::Dictionary ;
 
+using namespace pugi ;
+
+class EnvLoader {
+public:
+
+    EnvLoader(Environment &env): env_(env) {}
+    void load(const string &fname) ;
+
+private:
+
+    void parse(const xml_node &root) ;
+    void parseWorld(const xml_node &root) ;
+    void parseEnvironment(const xml_node &root) ;
+    void parseLibrary(const xml_node &root) ;
+    NodePtr parseVisual(const xml_node &root) ;
+    void parseShape(const xml_node &root) ;
+    void parseLink(const xml_node &root) ;
+    void parseRigidBody(const xml_node &root) ;
+    void parseRigidConstraint(const xml_node &root) ;
+    void parseModel(const xml_node &root) ;
+    NodePtr parseNode(const xml_node &root) ;
+    NodePtr parseNodeInstance(const xml_node &root) ;
+    NodePtr parseImportNode(const xml_node &root) ;
+    MaterialPtr parseMaterial(const xml_node &root) ;
+    MaterialPtr parseMaterialInstance(const xml_node &root) ;
+    DrawablePtr parseDrawable(const xml_node &root) ;
+    GeometryPtr parseGeometry(const xml_node &root) ;
+    GeometryPtr parseGeometryInstance(const xml_node &root) ;
+    GeometryPtr parseBox(const xml_node &root) ;
+    GeometryPtr parseMesh(const xml_node &root) ;
+    void parsePose(const xml_node &root, Pose &p) ;
+
+
+private:
+    Environment &env_ ;
+    string root_dir_ ;
+    map<string, NodePtr> node_instances_ ;
+    map<string, MaterialPtr> material_instances_ ;
+    map<string, GeometryPtr> geometry_instances_ ;
+};
+
+void Environment::loadXML(const string &path) {
+    EnvLoader loader(*this) ;
+    loader.load(path);
+}
+
+
+struct find_by_id_walker: pugi::xml_tree_walker
+{
+    find_by_id_walker(const string &tag, const string &id): tag_(tag), id_(id) {
+    }
+
+    virtual bool for_each(pugi::xml_node& node)
+    {
+        if ( pugi::node_element != node.type() ) return true ;
+
+        string ename = node.name() ;
+        string id = node.attribute("id").as_string() ;
+
+        if ( ename == tag_ && id == id_ ) {
+            node_ = node ;
+            return false ;
+        }
+        return true; // continue traversal
+    }
+
+    string tag_, id_ ;
+    xml_node node_ ;
+};
+
+void EnvLoader::load(const string &file_name) {
+    xml_document doc ;
+
+    string dir, base, ext ;
+    util::split_path(file_name, dir, base, ext) ;
+
+    xml_parse_result result = doc.load_file(file_name.c_str()) ;
+
+    if ( !result )
+        throw EnvironmentLoadException(result.description()) ;
+
+    xml_node root = doc.child("vsim") ;
+
+    root_dir_ = root.attribute("root_dir").as_string(dir.c_str()) ;
+
+    parse(root) ;
+}
+
+void EnvLoader::parse(const xml_node &root) {
+
+    if ( xml_node library = root.child("library") ) parseLibrary(library) ;
+    if ( xml_node world = root.child("world") ) parseWorld(world) ;
+    else throw EnvironmentLoadException("No <world> defined");
+    if ( xml_node env = root.child("environment") ) parseEnvironment(env) ;
+}
+
+void EnvLoader::parseWorld(const xml_node &parent) {
+
+    for( xml_node &child: parent.children() ) {
+        string tag_name = child.name() ;
+
+        if ( tag_name == "rigid_body" ) {
+            parseRigidBody(child) ;
+        } else if ( tag_name == "model" ) {
+            parseModel(child) ;
+        } else
+            throw EnvironmentLoadException(util::format("Invalid element <%> inside <world>", tag_name));
+    }
+}
+
+void EnvLoader::parseEnvironment(const xml_node &root)
+{
+
+}
+
+void EnvLoader::parseLibrary(const xml_node &root) {
+
+}
+
+NodePtr EnvLoader::parseVisual(const xml_node &parent) {
+    return parseNode(parent) ;
+}
+
+NodePtr EnvLoader::parseNode(const xml_node &parent)
+{
+    NodePtr p(new Node) ;
+
+    string id = parent.attribute("id").as_string() ;
+    if ( !id.empty() ) node_instances_.insert({id, p}) ;
+
+    bool is_first_pose = true ;
+    for( xml_node &child: parent.children() ) {
+        string tag_name = child.name() ;
+
+        if ( tag_name == "node" ) {
+            auto child_node = parseNode(child) ;
+            p->children_.push_back(child_node) ;
+        } else if ( tag_name == "include" ) {
+            parseImportNode(child) ;
+        } else if ( tag_name == "material" ) {
+            parseMaterial(child) ;
+        } else if ( tag_name == "drawable" ) {
+            parseDrawable(child) ;
+        } else if ( tag_name == "pose" ) {
+            if ( is_first_pose ) {
+                parsePose(child, p->pose_) ;
+                is_first_pose = false ;
+            }
+            else
+                throw EnvironmentLoadException("Only one <pose> expected inside <node>");
+        } else if ( tag_name == "node_instance" ) {
+            return parseNodeInstance(child) ;
+        } else
+            throw EnvironmentLoadException(util::format("Invalid element <%> inside <node>", tag_name));
+    }
+
+    return p;
+}
+
+NodePtr EnvLoader::parseNodeInstance(const xml_node &parent) {
+    string ref = parent.attribute("uri").as_string() ;
+    if ( ref.empty() )
+        throw EnvironmentLoadException("Attribute \"uri\" is required for <node_instance>");
+    string id = ref.substr(1) ;
+    auto it = node_instances_.find(id) ;
+    if ( it == node_instances_.end() )
+        throw EnvironmentLoadException(util::format("Unresolved reference \"%\" of <node_instance>", ref));
+    return it->second ;
+}
+
+MaterialPtr EnvLoader::parseMaterialInstance(const xml_node &parent)
+{
+    string ref = parent.attribute("uri").as_string() ;
+    if ( ref.empty() )
+        throw EnvironmentLoadException("Attribute \"uri\" is required for <material_instance>");
+    string id = ref.substr(1) ;
+    auto it = material_instances_.find(id) ;
+    if ( it == material_instances_.end() )
+        throw EnvironmentLoadException(util::format("Unresolved reference \"%\" of <material_instance>", ref));
+    return it->second ;
+
+}
+
+
+NodePtr EnvLoader::parseImportNode(const xml_node &root)
+{
+return nullptr;
+}
+
+MaterialPtr EnvLoader::parseMaterial(const xml_node &root)
+{
+return nullptr;
+}
+
+DrawablePtr EnvLoader::parseDrawable(const xml_node &parent)
+{
+    DrawablePtr drawable(new Drawable) ;
+
+    for( xml_node &child: parent.children() ) {
+        string tag_name = child.name() ;
+
+        if ( tag_name == "geometry" ) {
+            if ( !drawable->geometry_ )
+                drawable->geometry_ = parseGeometry(child) ;
+       } else if ( tag_name == "geometry_instance" ) {
+            if ( !drawable->geometry_ )
+                drawable->geometry_ = parseGeometryInstance(child) ;
+       } else if ( tag_name == "material" ) {
+            if ( !drawable->material_ )
+                drawable->material_ = parseMaterial(child) ;
+       } else if ( tag_name == "material_instance" ) {
+            if ( !drawable->material_ )
+                drawable->material_ = parseMaterialInstance(child) ;
+       } else
+                throw EnvironmentLoadException(util::format("Invalid element <%> inside <node>", tag_name));
+    }
+
+    if ( !drawable->geometry_ )
+        throw EnvironmentLoadException("No geometry defined inside <drawable>");
+
+    return drawable ;
+}
+
+GeometryPtr EnvLoader::parseGeometry(const xml_node &parent)
+{
+    GeometryPtr geom ;
+
+    for( xml_node &child: parent.children() ) {
+        string tag_name = child.name() ;
+
+        if ( tag_name == "box" ) {
+            geom = parseBox(child) ;
+        } else if ( tag_name == "mesh" ) {
+            geom = parseMesh(child) ;
+        } else
+            throw EnvironmentLoadException(util::format("Invalid element <%> inside <geometry>", tag_name));
+    }
+
+    if ( !geom )
+        throw EnvironmentLoadException("Empty <geometry> element");
+    return geom ;
+}
+
+GeometryPtr EnvLoader::parseGeometryInstance(const xml_node &parent)
+{
+    string ref = parent.attribute("uri").as_string() ;
+    if ( ref.empty() )
+        throw EnvironmentLoadException("Attribute \"uri\" is required for <geometry_instance>");
+    string id = ref.substr(1) ;
+    auto it = geometry_instances_.find(id) ;
+    if ( it == geometry_instances_.end() )
+        throw EnvironmentLoadException(util::format("Unresolved reference \"%\" of <geometry_instance>", ref));
+    return it->second ;
+}
+
+GeometryPtr EnvLoader::parseBox(const xml_node &parent)
+{
+    GeometryPtr geom ;
+
+    if ( xml_node extents = parent.child("extents") ) {
+        BoxGeometry *box = new BoxGeometry ;
+        istringstream strm(extents.child_value()) ;
+        Vector3f &e = box->half_extents_ ;
+        strm >> e.x() >> e.y() >> e.z() ;
+        geom.reset(box) ;
+    }
+    else
+        throw EnvironmentLoadException("<extents> is missing from <box>");
+
+    return geom ;
+
+}
+
+GeometryPtr EnvLoader::parseMesh(const xml_node &parent)
+{
+    GeometryPtr geom ;
+
+    Mesh *m = new Mesh ;
+
+    string src = parent.attribute("url").as_string() ;
+    try {
+        m->load(root_dir_ + '/' + src) ;
+    }
+    catch ( ModelLoaderException &e ) {
+        throw EnvironmentLoadException(e.what()) ;
+    }
+
+    return GeometryPtr(m) ;
+}
+
+void EnvLoader::parsePose(const xml_node &parent, Pose &p) {
+
+    for( xml_node &child: parent.children() ) {
+        string tag_name = child.name() ;
+        string cont = child.child_value() ;
+        istringstream sstrm(cont) ;
+
+        if ( tag_name == "translate" ) {
+            float tx, ty, tz ;
+            sstrm >> tx >> ty >> tz  ;
+            p.mat_.translate(Vector3f(tx, ty, tz)) ;
+        } else if ( tag_name == "rotate" ) {
+            float ax, ay, az, angle ;
+            sstrm >> ax >> ay >> az >> angle ;
+            p.mat_.rotate(AngleAxisf(angle * M_PI/180.0, Vector3f(ax, ay, az))) ;
+        } else if ( tag_name == "scale" ) {
+            float sx, sy, sz ;
+            sstrm >> sx >> sy >> sz  ;
+            p.mat_.scale(Vector3f(sx, sy, sz)) ;
+        } else if ( tag_name == "matrix" ) {
+            Matrix4f m ;
+
+            sstrm >> m(0, 0) >> m(0, 1) >> m(0, 2) >> m(0, 3) ;
+            sstrm >> m(1, 0) >> m(1, 1) >> m(1, 2) >> m(1, 3) ;
+            sstrm >> m(2, 0) >> m(2, 1) >> m(2, 2) >> m(2, 3) ;
+            sstrm >> m(3, 0) >> m(3, 1) >> m(3, 2) >> m(3, 3) ;
+
+            p.mat_ *= m ;
+        } else
+            throw EnvironmentLoadException(util::format("Invalid element <%> inside <pose>", tag_name));
+    }
+}
+
+void EnvLoader::parseShape(const xml_node &root)
+{
+
+}
+
+void EnvLoader::parseLink(const xml_node &root)
+{
+
+}
+
+void EnvLoader::parseRigidBody(const xml_node &parent) {
+    for( xml_node &child: parent.children() ) {
+        string tag_name = child.name() ;
+
+        if ( tag_name == "visual" ) {
+            parseVisual(child) ;
+        } else if ( tag_name == "shape" ) {
+            parseShape(child) ;
+        } else if ( tag_name == "link" ) {
+            parseLink(child) ;
+        } else
+            throw EnvironmentLoadException(util::format("Invalid element <%> inside <rigid_body>", tag_name));
+    }
+
+}
+
+void EnvLoader::parseRigidConstraint(const xml_node &root)
+{
+
+}
+
+void EnvLoader::parseModel(const xml_node &parent)
+{
+    for( xml_node &child: parent.children() ) {
+        string tag_name = child.name() ;
+
+        if ( tag_name == "rigid_body" ) {
+            parseRigidBody(child) ;
+        }
+        else if ( tag_name == "rigid_constraint" ) {
+            parseRigidConstraint(child) ;
+        }
+        else
+            throw EnvironmentLoadException(util::format("Invalid element <%> inside <model>", tag_name));
+    }
+}
+
+
+
+
+#if 0
 class EnvParser: public util::XMLSAXParser {
 public:
     enum ElementType { ModelElement, ModelElementReference, PoseElement, MeshElement, MeshElementReference, NodeElement, NodeElementReference,
@@ -449,5 +825,5 @@ void EnvParser::endElement(const string &qname)
 
 
 }
-
+#endif
 }

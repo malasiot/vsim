@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
 
     Environment env ;
     env.loadXML("/home/malasiot/tmp/env.xml") ;
-
+/*
     env.scene_->lights_.push_back(LightPtr(new DirectionalLight(Vector3f(0.5, 0.5, 1), Vector3f(1, 1, 1)))) ;
 
     ModelPtr model = Model::load("/home/malasiot/Downloads/greek_column.obj") ;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
     scene->models_.push_back(model) ;
     scene->bodies_.push_back(body) ;
     body->model_ = model ;
-
+*/
     glfwGUI gui(env.scene_) ;
 
     gui.run(500, 500) ;

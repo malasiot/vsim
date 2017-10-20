@@ -12,7 +12,7 @@
 #include <vsim/util/format.hpp>
 #include <vsim/env/material.hpp>
 #include <vsim/env/node.hpp>
-#include <vsim/env/mesh.hpp>
+#include <vsim/env/drawable.hpp>
 #include <vsim/env/geometry.hpp>
 
 #include <FreeImage.h>
@@ -214,8 +214,8 @@ void RendererImpl::render(const NodePtr &node, const Camera &cam, const Matrix4f
     Matrix4f mat = node->pose_.absolute(),
             tr = tf * mat ; // accumulate transform
 
-    for( uint i=0 ; i<node->geometries_.size() ; i++ ) {
-        const GeometryPtr &m = node->geometries_[i] ;
+    for( uint i=0 ; i<node->drawables_.size() ; i++ ) {
+        const DrawablePtr &m = node->drawables_[i] ;
         render(m, cam, tr, mode) ;
     }
 
@@ -733,11 +733,11 @@ void RendererImpl::initFontData()
 }
 
 
-void RendererImpl::render(const GeometryPtr &geom, const Camera &cam, const Matrix4f &mat, Renderer::RenderMode mode)
+void RendererImpl::render(const DrawablePtr &geom, const Camera &cam, const Matrix4f &mat, Renderer::RenderMode mode)
 {
-    if ( !geom->mesh_ ) return ;
+    if ( !geom->geometry_ ) return ;
 
-    MeshData &data = buffers_[geom->mesh_] ;
+    MeshData &data = buffers_[geom->geometry_] ;
 
     if ( mode == Renderer::RENDER_FLAT )
         prog_ = shaders_.get("rigid_flat") ;
@@ -790,15 +790,24 @@ void RendererImpl::render(const GeometryPtr &geom, const Camera &cam, const Matr
     glBindVertexArray(0) ;
 #else
     glBindVertexArray(data.vao_);
-    if ( geom->mesh_->ptype_ == Mesh::Triangles ) {
+
+    MeshPtr mesh = std::dynamic_pointer_cast<Mesh>(geom->geometry_) ;
+
+    if ( mesh ) {
+        if ( mesh->ptype_ == Mesh::Triangles ) {
+            glDrawArrays(GL_TRIANGLES, 0, data.elem_count_) ;
+        }
+        else if ( mesh->ptype_ == Mesh::Lines ) {
+            glDrawArrays(GL_LINES, 0, data.elem_count_) ;
+        }
+        else if ( mesh->ptype_ == Mesh::Points ) {
+            glDrawArrays(GL_POINTS, 0, data.elem_count_) ;
+        }
+
+    } else {
         glDrawArrays(GL_TRIANGLES, 0, data.elem_count_) ;
     }
-    else if ( geom->mesh_->ptype_ == Mesh::Lines ) {
-        glDrawArrays(GL_LINES, 0, data.elem_count_) ;
-    }
-    else if ( geom->mesh_->ptype_ == Mesh::Points ) {
-        glDrawArrays(GL_POINTS, 0, data.elem_count_) ;
-    }
+
     glBindVertexArray(0) ;
 
     glFlush();

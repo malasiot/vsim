@@ -19,6 +19,7 @@ ADD_DEFINITIONS( -std=c++11 )
 
 include_directories(
 	include
+        src/3rdparty/
 	${EIGEN3_INCLUDE_DIR}
         ${FREEIMAGE_INCLUDE_DIRS}
         ${FREETYPE_INCLUDE_DIRS}

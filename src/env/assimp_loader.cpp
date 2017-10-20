@@ -4,6 +4,7 @@
 #include <vsim/env/light.hpp>
 #include <vsim/env/node.hpp>
 #include <vsim/env/geometry.hpp>
+#include <vsim/env/drawable.hpp>
 
 #include <vsim/util/filesystem.hpp>
 
@@ -282,7 +283,7 @@ static bool importNodes(ModelPtr &scene, NodePtr &pnode, const struct aiScene *s
     /* draw all meshes assigned to this node */
     for (; n < nd->mNumMeshes; ++n) {
 
-        GeometryPtr geom(new Geometry) ;
+        DrawablePtr dr(new Drawable) ;
 
         const aiMesh* mesh = sc->mMeshes[nd->mMeshes[n]];
 
@@ -290,16 +291,16 @@ static bool importNodes(ModelPtr &scene, NodePtr &pnode, const struct aiScene *s
 
         if ( mit == meshes.end() ) continue ;
 
-        geom->mesh_ = mit->second ;
+        dr->geometry_ =  std::static_pointer_cast<Geometry>(mit->second) ;
 
         const aiMaterial* material = sc->mMaterials[mesh->mMaterialIndex];
 
         map<const aiMaterial *, MaterialPtr>::const_iterator cit = materials.find(material) ;
 
         if ( cit != materials.end() )
-            geom->material_ = cit->second ;
+            dr->material_ = cit->second ;
 
-        snode->geometries_.push_back(geom) ;
+        snode->drawables_.push_back(dr) ;
     }
 
     if ( pnode ) {

@@ -41,6 +41,9 @@ typedef std::shared_ptr<Scene> ScenePtr ;
 struct Model ;
 typedef std::shared_ptr<Model> ModelPtr ;
 
+struct Drawable ;
+typedef std::shared_ptr<Drawable> DrawablePtr ;
+
 
 }
 

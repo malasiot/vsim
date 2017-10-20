@@ -4,7 +4,7 @@
 #include <vector>
 #include <Eigen/Core>
 
-#include <vsim/env/mesh.hpp>
+#include <vsim/env/geometry.hpp>
 
 // triangulates a 3D (flat) polygon and returns an array of triplets containing indexes to the original polygon
 bool triangulate(const std::vector<Eigen::Vector3f> &pts, std::vector<uint32_t> &result) ;
