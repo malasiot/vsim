@@ -7,6 +7,8 @@
 #include <map>
 #include <Eigen/Core>
 
+#include <vsim/env/base_element.hpp>
+
 namespace vsim {
 
 struct Geometry ;
@@ -14,7 +16,7 @@ typedef std::shared_ptr<Geometry> GeometryPtr ;
 
 // Geometry structure associates a mesh instance with material.
 
-struct Geometry {
+struct Geometry: public BaseElement {
 
     Geometry() = default ;
     virtual ~Geometry() {}
@@ -22,8 +24,15 @@ struct Geometry {
 
 struct BoxGeometry: public Geometry {
     Eigen::Vector3f half_extents_ ;
-
 };
+
+typedef std::shared_ptr<BoxGeometry> BoxGeometryPtr ;
+
+struct PlaneGeometry: public Geometry {
+    Eigen::Vector4f coeffs_ ;
+};
+
+typedef std::shared_ptr<PlaneGeometry> PlaneGeometryPtr ;
 
 struct SphereGeometry: public Geometry {
     float radius_ ;

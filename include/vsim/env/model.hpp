@@ -14,12 +14,14 @@
 #include <vsim/env/pose.hpp>
 #include <assimp/scene.h>
 
+#include <vsim/env/base_element.hpp>
+
 namespace vsim {
 
 // class defining a scene model. A model is a container of other models as well as geometry nodes and resources such as materials, lights
 // that may be loaded from a 3D model file. Nodes can also form a hierarchy. Conceptually a model is a collection of objects while nodes are object parts
 
-class Model {
+class Model: public BaseElement {
 public:
 
     // load scene from file using one of registered drivers (falling back to Assimp if no valid driver found)

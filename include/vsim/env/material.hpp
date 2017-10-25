@@ -8,6 +8,8 @@
 #include <vsim/util/variant.hpp>
 #include <Eigen/Core>
 
+#include <vsim/env/base_element.hpp>
+
 namespace vsim {
 
 struct Material ;
@@ -19,10 +21,9 @@ struct Sampler2D {
     std::string wrap_s_, wrap_t_ ;
 };
 
-struct Material {
+struct Material: public BaseElement {
     enum Type { PHONG, LAMBERTIAN, BLINN, CONSTANT } ;
 
-    std::string name_ ;
     Type type_ ;        // type of material
     util::variant<Eigen::Vector4f> emission_, ambient_, diffuse_,
     specular_, reflective_, transparent_ ;

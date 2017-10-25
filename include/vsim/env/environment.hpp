@@ -8,30 +8,26 @@
 
 #include <Eigen/Core>
 
-#include <vsim/env/scene.hpp>
+#include <vsim/env/scene_fwd.hpp>
 
 namespace vsim {
 
 class Environment ;
 typedef std::shared_ptr<Environment> EnvironmentPtr ;
 
-// class defining a complete scene
+// class defining attributes of scene visualization
 
 class Environment {
 public:
 
     Environment() {}
 
-    void loadXML(const std::string &path) ;
 public:
 
-    ScenePtr scene_ ;
+    CameraPtr camera_ ;
+    std::vector<LightPtr> lights_ ;
 };
 
-class EnvironmentLoadException: public std::runtime_error {
-public:
-    EnvironmentLoadException(const std::string &msg): std::runtime_error(msg) {}
-};
 
 }
 #endif

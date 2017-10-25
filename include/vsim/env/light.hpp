@@ -7,6 +7,7 @@
 #include <map>
 
 #include <vsim/util/variant.hpp>
+#include <vsim/env/base_element.hpp>
 
 #include <Eigen/Core>
 
@@ -15,7 +16,7 @@ namespace vsim {
 
 // Abstract light
 
-struct Light {
+struct Light: public BaseElement {
     enum Type { AMBIENT, POINT, DIRECTIONAL, SPOT } ;
     Light(Type t): type_(t) {}
 

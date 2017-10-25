@@ -44,6 +44,23 @@ typedef std::shared_ptr<Model> ModelPtr ;
 struct Drawable ;
 typedef std::shared_ptr<Drawable> DrawablePtr ;
 
+struct CollisionShape ;
+typedef std::shared_ptr<CollisionShape> CollisionShapePtr ;
+
+struct RigidBody ;
+typedef std::shared_ptr<RigidBody> RigidBodyPtr ;
+
+struct RigidBodyConstraint ;
+typedef std::shared_ptr<RigidBodyConstraint> RigidBodyConstraintPtr ;
+
+struct PhysicsModel ;
+typedef std::shared_ptr<PhysicsModel> PhysicsModelPtr ;
+
+struct PhysicsScene ;
+typedef std::shared_ptr<PhysicsScene> PhysicsScenePtr ;
+
+struct Environment ;
+typedef std::shared_ptr<Environment> EnvironmentPtr ;
 
 }
 

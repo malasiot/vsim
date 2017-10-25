@@ -9,11 +9,8 @@
 #include <boost/optional.hpp>
 #include <Eigen/Core>
 
-#include <vsim/env/body.hpp>
-#include <vsim/env/model.hpp>
-#include <vsim/env/mesh.hpp>
-#include <vsim/env/camera.hpp>
-#include <vsim/env/light.hpp>
+#include <vsim/env/scene_fwd.hpp>
+
 
 namespace vsim {
 
@@ -21,20 +18,12 @@ namespace vsim {
 
 class Scene {
 public:
-
-    // load scene from file using one of registered drivers (falling back to Assimp if no valid driver found)
-    static ScenePtr load(const std::string &fname) ;
-
-
+    void loadFromFile(const std::string &script_path) ;
+    static ScenePtr loadFromString(const std::string &script_source) ;
 public:
 
-    std::vector<BodyPtr> bodies_ ;
-
-    std::vector<ModelPtr> models_ ;           // shared models
-    std::vector<MaterialPtr> materials_ ;   // shared materials
-    std::vector<MeshPtr> meshes_ ;          // shared meshes
-    std::vector<CameraPtr> cameras_ ;       // list of cameras
-    std::vector<LightPtr> lights_ ;         // list of lights
+    PhysicsScenePtr physics_scene_ ;
+    EnvironmentPtr environment_ ;
 };
 
 

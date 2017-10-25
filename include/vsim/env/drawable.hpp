@@ -8,6 +8,7 @@
 
 #include <Eigen/Core>
 #include <vsim/env/scene_fwd.hpp>
+#include <vsim/env/base_element.hpp>
 
 namespace vsim {
 
@@ -16,7 +17,7 @@ typedef std::shared_ptr<Drawable> DrawablePtr ;
 
 // class defining a complete scene
 
-class Drawable {
+class Drawable: public BaseElement {
 public:
 
     Drawable() {}

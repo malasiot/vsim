@@ -53,7 +53,8 @@ set(ENV_FILES
     ${SRC_FOLDER}/env/mesh.cpp
     ${SRC_FOLDER}/env/pose.cpp
     ${SRC_FOLDER}/env/camera.cpp
-    ${SRC_FOLDER}/env/xml_loader.cpp
+    ${SRC_FOLDER}/env/lua_scripting.cpp
+#    ${SRC_FOLDER}/env/xml_loader.cpp
 
     ${INCLUDE_FOLDER}/env/scene.hpp
     ${INCLUDE_FOLDER}/env/model.hpp
@@ -63,10 +64,14 @@ set(ENV_FILES
     ${INCLUDE_FOLDER}/env/geometry.hpp
     ${INCLUDE_FOLDER}/env/material.hpp
     ${INCLUDE_FOLDER}/env/light.hpp
-    ${INCLUDE_FOLDER}/env/body.hpp
+    ${INCLUDE_FOLDER}/env/rigid_body.hpp
     ${INCLUDE_FOLDER}/env/pose.hpp
     ${INCLUDE_FOLDER}/env/frame.hpp
     ${INCLUDE_FOLDER}/env/drawable.hpp
+    ${INCLUDE_FOLDER}/env/collision_shape.hpp
+    ${INCLUDE_FOLDER}/env/physics_model.hpp
+    ${INCLUDE_FOLDER}/env/physics_scene.hpp
+    ${INCLUDE_FOLDER}/env/rigid_body_constraint.hpp
     ${INCLUDE_FOLDER}/env/environment.hpp
 )
 

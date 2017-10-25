@@ -56,6 +56,43 @@ public:
     }
 };
 
+/*
+
+    b1 = Body {
+        mass=2.0,
+        inertia = { 1, 2, 3 },
+        frame=Pose{} ;
+        Shape {
+            pose=Pose{}
+            geometry =
+                Plane { }
+                Box {}
+                Sphere {}
+                Cylinder {}
+                Capsule {}
+                Mesh { src="sksk" }
+                ConvexMesh { src = "sks" }
+        }
+
+        Shape {
+        }
+
+    }
+
+    b2=  Body {}
+
+    Model {
+        b1, b2,
+        Constraint {
+            Hinge {
+                parent = p2, child = b2,
+
+            }
+        }
+
+    }
+
+  */
 int main() {
     std::shared_ptr<holy> h1,h2 ;
     std::cout << "=== usertype_initializers example ===" << std::endl;

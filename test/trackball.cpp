@@ -1,6 +1,6 @@
 #include "trackball.hpp"
 
-#include <vsim/env/scene.hpp>
+#include <vsim/env/camera.hpp>
 #include <Eigen/Geometry>
 
 using namespace std ;

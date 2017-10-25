@@ -11,9 +11,13 @@
 
 #include <vsim/util/format.hpp>
 #include <vsim/env/material.hpp>
+#include <vsim/env/camera.hpp>
 #include <vsim/env/node.hpp>
+#include <vsim/env/model.hpp>
 #include <vsim/env/drawable.hpp>
 #include <vsim/env/geometry.hpp>
+#include <vsim/env/environment.hpp>
+#include <vsim/env/light.hpp>
 
 #include <FreeImage.h>
 
@@ -30,7 +34,7 @@ namespace vsim { namespace renderer {
 
 void RendererImpl::makeVertexBuffers(const ScenePtr &scene) {
 
-    for( MeshPtr mesh: scene->meshes_ ) {
+/*    for( MeshPtr mesh: scene->meshes_ ) {
         MeshData data ;
         initBuffersForMesh(data, *mesh);
         buffers_[mesh] = data ;
@@ -38,9 +42,11 @@ void RendererImpl::makeVertexBuffers(const ScenePtr &scene) {
 
     for( ModelPtr m: scene->models_ )
         makeVertexBuffers(m);
+        */
 }
 
 void RendererImpl::makeVertexBuffers(const ModelPtr &model) {
+    /*
     for( MeshPtr mesh: model->meshes_ ) {
         MeshData data ;
         initBuffersForMesh(data, *mesh);
@@ -49,7 +55,7 @@ void RendererImpl::makeVertexBuffers(const ModelPtr &model) {
 
     for( ModelPtr child: model->children_ )
         makeVertexBuffers(child) ;
-
+*/
 }
 
 bool RendererImpl::init() {
@@ -186,12 +192,13 @@ void RendererImpl::render(const Camera &cam, Renderer::RenderMode mode) {
     proj_ = cam.getViewMatrix() ;
 
     // render model hierarchy
-
+/*
     for( uint i=0 ; i<scene_->bodies_.size() ; i++ ) {
         const BodyPtr &b = scene_->bodies_[i] ;
         render(b->model_, cam, b->pose_.absolute(), mode) ;
 
     }
+    */
 }
 
 void RendererImpl::render(const ModelPtr &model, const Camera &cam, const Matrix4f &tf, Renderer::RenderMode mode) {
@@ -294,8 +301,8 @@ void RendererImpl::setLights(const ScenePtr &scene) {
 
     light_index_ = 0 ;
 
-    setLights(scene->lights_) ;
-
+    setLights(scene->environment_->lights_) ;
+/*
     for( ModelPtr m: scene->models_ )
         setLights(m) ;
 
@@ -304,6 +311,7 @@ void RendererImpl::setLights(const ScenePtr &scene) {
         prog_->setUniform(vname + ".light_type", -1) ;
         continue ;
     }
+    */
 }
 
 void RendererImpl::setLights(const ModelPtr &model) {
@@ -366,11 +374,13 @@ void RendererImpl::setLights(const vector<LightPtr> &lights)
 }
 
 void RendererImpl::initTextures(const ScenePtr &scene) {
+    /*
     for( MaterialPtr mat: scene->materials_)
         initTexture(mat) ;
 
     for( ModelPtr model: scene->models_)
         initTextures(model) ;
+        */
 }
 
 void RendererImpl::initTextures(const ModelPtr &model) {

@@ -101,8 +101,50 @@ public:
 
 int main(int argc, char *argv[]) {
 
-    Environment env ;
-    env.loadXML("/home/malasiot/tmp/env.xml") ;
+
+    string script = R"(
+
+                       return Scene{
+                            Environment {},
+                            PhysicsScene {
+                                RigidBody
+                                {
+                                    mass = 10,
+                                    CollisionShape {
+                                        Box { 100, 100, 100 }
+                                    },
+                                    Pose {
+                                        translate { 150, 180, 0 },
+                                    }
+                                },
+                                RigidBody
+                                {
+                                    mass = 6,
+                                    CollisionShape {
+                                        Box { 70, 70, 70 }
+                                    },
+                                    Pose {
+                                        translate { 320, 350, 0 },
+                                    }
+                                },
+                                RigidBody
+                                {
+                                    CollisionShape {
+                                 [[       Plane { 0, 1, 0, 0 } ]]
+                                    }
+                                }
+                            }
+                        };
+
+
+
+    )" ;
+
+
+    ScenePtr scene  = Scene::loadFromString(script);
+    cout << "ok here" << endl ;
+ //   Environment env ;
+  //  env.loadXML("/home/malasiot/tmp/env.xml") ;
 /*
     env.scene_->lights_.push_back(LightPtr(new DirectionalLight(Vector3f(0.5, 0.5, 1), Vector3f(1, 1, 1)))) ;
 
@@ -130,8 +172,8 @@ int main(int argc, char *argv[]) {
     scene->bodies_.push_back(body) ;
     body->model_ = model ;
 */
-    glfwGUI gui(env.scene_) ;
+//    glfwGUI gui(env.scene_) ;
 
-    gui.run(500, 500) ;
+ //   gui.run(500, 500) ;
 
 }

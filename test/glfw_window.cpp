@@ -22,7 +22,7 @@ bool glfwRenderWindow::run(size_t width, size_t height, const string &wname) {
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);\
     if ( !( handle_ = glfwCreateWindow(width, height, wname.c_str(), 0, 0) )) {
         glfwTerminate();
