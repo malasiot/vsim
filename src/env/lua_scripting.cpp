@@ -62,25 +62,66 @@ static PhysicsScenePtr lua_create_physics_scene(sol::table t) {
     return p ;
 }
 
+struct Visual {
+    NodePtr node_ ;
+};
+
+struct Model {
+    string src_ ;
+};
+
+static Visual lua_create_visual(sol::table t) {
+
+    Visual res ;
+
+    for( auto &&c: t ) {
+        auto &&v = c.second ;
+        if ( v.is<Node>() ) {
+            NodePtr e = v.as<NodePtr>() ;
+            res.node_ = e ;
+        } else if ( v.is<Model>() ) {
+            Model e = v.as<Model>() ;
+            //res.node_ = e.node_ ;
+        }
+
+    }
+
+    return res ;
+}
+
+static Model lua_create_model(sol::table t) {
+
+    Model res ;
+
+    for( auto &&c: t ) {
+        auto &&v = c.second ;
+        if ( c.first.is<string>() && c.first.as<string>() == "src" ) {
+            string src = v.as<string>() ;
+            res.src_ = src ;
+        }
+    }
+
+    return res ;
+}
+
+
 static RigidBodyPtr lua_create_rigid_body(sol::table t) {
 
     RigidBodyPtr p(new RigidBody());
 
-    for( auto c: t ) {
-        if ( c.second.is<CollisionShape>() ) {
-            CollisionShapePtr e = c.second.as<CollisionShapePtr>() ;
+    for( auto &&c: t ) {
+        auto &&v = c.second ;
+        if ( v.is<CollisionShape>() ) {
+            CollisionShapePtr e = v.as<CollisionShapePtr>() ;
             p->shapes_.push_back(e) ;
-        } else if ( c.second.is<Pose>() ) {
-            Pose e = c.second.as<Pose>() ;
+        } else if ( v.is<Pose>() ) {
+            Pose e = v.as<Pose>() ;
             p->pose_ = e ;
+        } else if ( v.is<Visual>() ) {
+            Visual e = v.as<Visual>() ;
+            p->visual_ = e.node_ ;
         }
-        else if ( c.first.is<string>() ) {
-            string attr = c.first.as<string>() ;
-            if ( attr == "visual" ) {
-                NodePtr e = c.second.as<NodePtr>() ;
-                p->visual_ = e ;
-            }
-        }
+
     }
 
     return p ;
@@ -252,6 +293,14 @@ ScenePtr Scene::loadFromString(const string &src) {
 
     lua.new_usertype<MScale>("scale",
         sol::call_constructor, sol::factories(&lua_create_pose_scale)
+    );
+
+    lua.new_usertype<Visual>("Visual",
+        sol::call_constructor, sol::factories(&lua_create_visual)
+    );
+
+    lua.new_usertype<Model>("Model",
+        sol::call_constructor, sol::factories(&lua_create_model)
     );
 
     auto res = lua.script(src) ;

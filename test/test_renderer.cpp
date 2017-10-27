@@ -115,6 +115,9 @@ int main(int argc, char *argv[]) {
                                     },
                                     Pose {
                                         translate { 150, 180, 0 },
+                                    },
+                                    Visual {
+                                        Model { src = "skkkskk" }
                                     }
                                 },
                                 RigidBody
